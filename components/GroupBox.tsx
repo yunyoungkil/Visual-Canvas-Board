@@ -66,50 +66,63 @@ const GroupBox: React.FC<GroupBoxProps> = ({
 
       {/* Group header - editable, pointer-events enabled */}
       <div
-        className="absolute -top-8 left-0 px-3 py-1 text-sm font-semibold text-white rounded-t-md pointer-events-auto cursor-pointer"
-        style={{ backgroundColor: color, zIndex: 1000 }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+        className="absolute -top-8 left-0 pointer-events-auto"
+        style={{ zIndex: 1000 }}
       >
-        {isEditingLabel ? (
-          <input
-            type="text"
-            value={labelValue}
-            onChange={(e) => setLabelValue(e.target.value)}
-            onBlur={handleLabelSubmit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleLabelSubmit();
-              } else if (e.key === "Escape") {
-                setLabelValue(label);
-                setIsEditingLabel(false);
-              }
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-            className="px-2 py-1 text-sm font-semibold text-gray-900 bg-white rounded border-2 border-blue-500 outline-none"
-            style={{ minWidth: "150px" }}
-            autoFocus
-          />
-        ) : (
-          <span
-            className="cursor-pointer hover:underline"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsEditingLabel(true);
-            }}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            {labelValue || `그룹 : ${groupId.substring(0, 8)}`}
-          </span>
-        )}
+        <div
+          className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-white rounded-t-md cursor-pointer"
+          style={{ backgroundColor: color }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          {isEditingLabel ? (
+            <input
+              type="text"
+              value={labelValue}
+              onChange={(e) => setLabelValue(e.target.value)}
+              onBlur={handleLabelSubmit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleLabelSubmit();
+                } else if (e.key === "Escape") {
+                  setLabelValue(label);
+                  setIsEditingLabel(false);
+                }
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
+              className="px-2 py-1 text-sm font-semibold text-gray-900 bg-white rounded border-2 border-blue-500 outline-none"
+              style={{ minWidth: "150px" }}
+              autoFocus
+            />
+          ) : (
+            <>
+              <span
+                className="cursor-pointer hover:underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditingLabel(true);
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                {labelValue || `그룹 : ${groupId.substring(0, 8)}`}
+              </span>
+              <span
+                className="text-xs opacity-75 whitespace-nowrap"
+                title="그룹 전체 이동: Ctrl/Cmd + 클릭 후 드래그"
+              >
+                ⓘ
+              </span>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
