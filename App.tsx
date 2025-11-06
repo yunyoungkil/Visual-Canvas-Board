@@ -1,0 +1,503 @@
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import type { Editor } from '@tiptap/react';
+import type { CanvasItem, Connector, Point, TextItem, ShapeItem, ItemAiToolbarState, TiptapToolbarState, ConnectorLabelEditorState, SuggestedGroupOverlayState } from './types';
+import Header from './components/Header';
+import LeftToolbar from './components/LeftToolbar';
+import ContextualActionBar from './components/ContextualActionBar';
+import ZoomControls from './components/ZoomControls';
+import DetailsPanel from './components/DetailsPanel';
+import CanvasItemComponent from './components/CanvasItemComponent';
+import ConnectorLabelEditor from './components/ConnectorLabelEditor';
+import ContextMenu from './components/ContextMenu';
+import AiHelpModal from './components/AiHelpModal';
+import OutlineModal from './components/OutlineModal';
+import SocialPostModal from './components/SocialPostModal';
+import BrainstormModal from './components/BrainstormModal';
+import AiExportModal from './components/AiExportModal';
+import SuggestedGroupOverlay from './components/SuggestedGroupOverlay';
+import KeywordAnalysisModal from './components/KeywordAnalysisModal';
+import ConnectorsLayer from './components/ConnectorsLayer';
+import AiChatAssistant from './components/AiChatAssistant';
+import ItemAiToolbar from './components/ItemAiToolbar';
+import EditorToolbar from './components/EditorToolbar';
+import ImageToolbar from './components/TextSelectionToolbar'; // Repurposed for image editing
+import * as C from './constants';
+
+import { useCanvasState } from './hooks/useCanvasState';
+import { useCanvasInteraction } from './hooks/useCanvasInteraction';
+import { useAIFeatures } from './hooks/useAIFeatures';
+
+const App: React.FC = () => {
+    const canvasStateAndActions = useCanvasState();
+    const {
+        items, connectors, scale, viewOffset, history,
+        handleUndo, handleRedo, handleClearCanvas, updateZIndex,
+        handleItemUpdate, handleConnectorUpdate
+    } = canvasStateAndActions;
+
+    const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+    const [isDetailsPanelVisible, setIsDetailsPanelVisible] = useState(false);
+
+    const [itemAiToolbarFloatingState, setItemAiToolbarFloatingState] = useState<ItemAiToolbarState | null>(null);
+    const [tiptapToolbarState, setTiptapToolbarState] = useState<TiptapToolbarState | null>(null);
+    const [connectorLabelEditorFloatingState, setConnectorLabelEditorFloatingState] = useState<ConnectorLabelEditorState | null>(null);
+    const [suggestedGroupOverlayFloatingStates, setSuggestedGroupOverlayFloatingStates] = useState<SuggestedGroupOverlayState[]>([]);
+    const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
+
+
+    const {
+        isExporting, isGeneratingImage, generationError, isAiHelpModalVisible, isOutlineModalOpen, isSocialPostModalOpen,
+        isBrainstormModalOpen, isAiExportModalOpen, isKeywordAnalysisModalOpen, isExportingWithAi, isGeneratingOutline,
+        isGeneratingSocialPost, isGeneratingKeywordAnalysis, suggestedGroups, isSuggestingGroups, isGeneratingAIContentFor,
+        isCheckingApiKey, isChatAssistantOpen, chatMessages, isSendingChatMessage,
+        keywordAnalysisCurrentInput, keywordAnalysisLastGeneratedInput, keywordAnalysisResults, isGeneratingGroupDraft,
+        setIsAiHelpModalVisible, setIsOutlineModalOpen, setIsSocialPostModalOpen, setIsBrainstormModalOpen,
+        setIsAiExportModalOpen, setIsKeywordAnalysisModalOpen, setIsChatAssistantOpen, setSuggestedGroups,
+        handleExportPng, handleGenerateTextDraft: handleGenerateTextDraftInternal, handleCommitTextAndGenerateDraft: handleCommitTextAndGenerateDraftInternal,
+        handleAiTextEdit, handleUpdateTextDraftWithConnections: handleUpdateTextDraftWithConnectionsInternal, handleSuggestGroups, handleAcceptSuggestion,
+        handleGenerateOutline, handleGenerateSocialPost, handleGenerateBrainstormIdeas, handleAddIdeaToCanvas, handleGenerateKeywordAnalysis,
+        handleExportWithAi, handleSendChatMessage: handleSendChatMessageInternal,
+        setKeywordAnalysisCurrentInput, handleGenerateGroupDraft, apiKeyError, setApiKeyError,
+    } = useAIFeatures(canvasStateAndActions, selectedItemIds);
+    
+    const {
+        canvasRef, exportRef, selectedConnectorId, setSelectedConnectorId,
+        snapLines, selectionBox, isSpacePanning, isPanModeActive, isTextModeActive, shapeToAdd, editingItemId,
+        setEditingItemId, editingConnectorState, panningState, hoveredConnectorId, contextMenuState, hoveredItemIdForConnection,
+        setShapeToAdd, setIsPanModeActive, setIsTextModeActive, setContextMenuState,
+        handleWheel, handleDragOver, handleDrop, handleItemMouseDown, handleMouseUp, handleItemDoubleClick: handleItemDoubleClickInternal,
+        handleResizeMouseDown, onConnectionStart, handleContentUpdate, handleCanvasMouseDown, handleConnectorLabelEdit: handleConnectorLabelEditInternal,
+        handleGroup, handleUngroup, handleDelete, handleCopy, handlePaste, handleDuplicate, handleConnectorLabelUpdate,
+        interactionStateAndSetters,
+        interactionHandlers
+    } = useCanvasInteraction({ ...canvasStateAndActions, selectedItemIds, setSelectedItemIds });
+
+    const { canvasToScreen } = interactionHandlers;
+
+    const selectedItems = useMemo(() => items.filter(item => selectedItemIds.includes(item.id)), [items, selectedItemIds]);
+    const itemForAiToolbar = useMemo(() =>
+        itemAiToolbarFloatingState?.itemId
+        ? items.find(i => i.id === itemAiToolbarFloatingState.itemId)
+        : null,
+    [itemAiToolbarFloatingState, items]);
+    const detailsPanelEntity = useMemo(() => {
+        if (selectedItems.length === 1) return selectedItems[0];
+        if (selectedConnectorId) return connectors.find(c => c.id === selectedConnectorId) || null;
+        return null;
+    }, [selectedItems, selectedConnectorId, connectors]);
+    const connectingState = interactionStateAndSetters.connectingState;
+
+    useEffect(() => {
+        if (!detailsPanelEntity) {
+            setIsDetailsPanelVisible(false);
+        }
+    }, [detailsPanelEntity]);
+    
+    const handleStopEditing = useCallback(() => {
+        setActiveEditor(null);
+        setTiptapToolbarState(null);
+    }, []);
+
+    // Fix: When an edited item is deleted, clean up editor-related state.
+    useEffect(() => {
+        const isEditingItemPresent = items.some(item => item.id === editingItemId);
+        if (editingItemId && !isEditingItemPresent) {
+            handleStopEditing();
+            setEditingItemId(null);
+        }
+    }, [items, editingItemId, handleStopEditing, setEditingItemId]);
+
+
+    const handleGenerateTextDraft = useCallback((itemId: string, itemRect: DOMRect) => {
+        const item = items.find(i => i.id === itemId);
+        if(!item || (item.type !== 'text' && item.type !== 'shape')) return;
+        handleGenerateTextDraftInternal(itemId, item.content, setEditingItemId);
+        setItemAiToolbarFloatingState(null);
+    }, [items, handleGenerateTextDraftInternal, setEditingItemId]);
+
+    const handleCommitTextAndGenerateDraft = useCallback((itemId: string, itemRect: DOMRect) => {
+        const item = items.find(i => i.id === itemId);
+        if(!item || (item.type !== 'text' && item.type !== 'shape')) return;
+        handleCommitTextAndGenerateDraftInternal(itemId, item.content, setEditingItemId);
+        setItemAiToolbarFloatingState(null);
+    }, [items, handleCommitTextAndGenerateDraftInternal, setEditingItemId]);
+
+    const handleUpdateTextDraftWithConnections = useCallback((itemId: string, itemRect: DOMRect) => {
+        const item = items.find(i => i.id === itemId);
+        if(!item || (item.type !== 'text' && item.type !== 'shape')) return;
+        handleUpdateTextDraftWithConnectionsInternal(itemId, item.content);
+        setItemAiToolbarFloatingState(null);
+    }, [items, handleUpdateTextDraftWithConnectionsInternal]);
+
+    const handleShowItemAiToolbar = useCallback((item: CanvasItem, itemRect: DOMRect) => {
+        const isTextual = item.type === 'text' || item.type === 'shape';
+        if (!isTextual) return;
+
+        const htmlContent = (item as TextItem | ShapeItem).content;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        const currentTextValue = tempDiv.textContent || tempDiv.innerText || '';
+        
+        const hasConnections = connectors.some(conn => conn.fromId === item.id || conn.toId === item.id);
+
+        const canShowGenerateDraftButton = currentTextValue.trim().length > 0 && currentTextValue.trim().length < 200 && !htmlContent.includes('<br>');
+        const canShowUpdateDraftButton = !editingItemId && currentTextValue.trim().length >= 200 && hasConnections;
+
+        if (canShowGenerateDraftButton || canShowUpdateDraftButton) {
+            setItemAiToolbarFloatingState({
+                isVisible: true,
+                itemId: item.id,
+                top: itemRect.top,
+                left: itemRect.left + itemRect.width / 2,
+                canGenerateDraft: canShowGenerateDraftButton,
+                canUpdateDraft: canShowUpdateDraftButton,
+            });
+        } else {
+            setItemAiToolbarFloatingState(null);
+        }
+    }, [connectors, editingItemId]);
+
+    const handleHideItemAiToolbar = useCallback(() => {
+        setItemAiToolbarFloatingState(null);
+    }, []);
+    
+    const handleStartEditing = useCallback((editor: Editor, itemRect: DOMRect) => {
+        setActiveEditor(editor);
+        setTiptapToolbarState({
+            isVisible: true,
+            editor: editor,
+            top: itemRect.top,
+            left: itemRect.left + itemRect.width / 2,
+        });
+        setItemAiToolbarFloatingState(null);
+    }, []);
+
+    const handleItemDoubleClick = useCallback((item: CanvasItem, itemRect: DOMRect) => {
+        handleItemDoubleClickInternal(item);
+    }, [handleItemDoubleClickInternal]);
+
+    const handleConnectorLabelEdit = useCallback((conn: Connector, midpoint: Point, angle: number) => {
+        const screenMidpoint = canvasToScreen(midpoint);
+        setConnectorLabelEditorFloatingState({ 
+            id: conn.id, 
+            initialValue: conn.label || '', 
+            initialColor: conn.labelColor || '#000000', 
+            initialFontSize: conn.labelFontSize || 14, 
+            position: screenMidpoint, 
+            angle: angle,
+        });
+        handleConnectorLabelEditInternal(conn, midpoint, angle);
+    }, [canvasToScreen, handleConnectorLabelEditInternal]);
+
+    const handleConnectorLabelEditorEnd = useCallback((id: string, updates: { text: string; color: string; fontSize: number; }) => {
+        handleConnectorLabelUpdate(id, updates);
+        setConnectorLabelEditorFloatingState(null);
+    }, [handleConnectorLabelUpdate]);
+
+    const handleConnectorLabelEditorCancel = useCallback(() => {
+        setConnectorLabelEditorFloatingState(null);
+    }, []);
+
+    useEffect(() => {
+        setSuggestedGroupOverlayFloatingStates(suggestedGroups.map(suggestion => {
+            const screenX = suggestion.bounds.x * scale + viewOffset.x;
+            const screenY = suggestion.bounds.y * scale + viewOffset.y;
+            const screenWidth = suggestion.bounds.width * scale;
+            const screenHeight = suggestion.bounds.height * scale;
+
+            return {
+                id: suggestion.id,
+                itemIds: suggestion.itemIds,
+                bounds: { x: screenX, y: screenY, width: screenWidth, height: screenHeight },
+                scale: scale,
+            };
+        }));
+    }, [suggestedGroups, scale, viewOffset]);
+
+    const handleAcceptSuggestionFloating = useCallback((suggestionId: string) => {
+        const suggestion = suggestedGroups.find(s => s.id === suggestionId);
+        if (suggestion) {
+            handleAcceptSuggestion(suggestion, (ids) => setSelectedItemIds(ids));
+        }
+    }, [suggestedGroups, handleAcceptSuggestion, setSelectedItemIds]);
+
+    const handleRejectSuggestionFloating = useCallback((suggestionId: string) => {
+        setSuggestedGroups(prev => prev.filter(s => s.id !== suggestionId));
+    }, [setSuggestedGroups]);
+
+    const handleSendChatMessage = useCallback((message: string) => {
+        handleSendChatMessageInternal(message);
+    }, [handleSendChatMessageInternal]);
+
+    return (
+        <div className="w-screen h-screen overflow-hidden bg-gray-100" ref={canvasRef} onDragOver={handleDragOver} onDrop={handleDrop} onWheel={handleWheel}>
+            <div
+                ref={exportRef}
+                className={`w-full h-full relative transition-transform duration-200 ease-in-out ${(isSpacePanning || isPanModeActive || panningState) ? 'cursor-grabbing' : isPanModeActive ? 'cursor-grab' : isTextModeActive ? 'cursor-text' : shapeToAdd ? 'cursor-crosshair' : 'cursor-default'}`}
+                style={{ transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${scale})`, transformOrigin: '0 0' }}
+                onMouseDown={handleCanvasMouseDown}
+                onMouseUp={handleMouseUp}
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    const target = e.target as HTMLElement;
+                    const itemElement = target.closest('.canvas-item');
+                    const connectorElement = target.closest('.connector-group');
+                    const itemId = itemElement?.getAttribute('data-id') || null;
+                    const connectorId = connectorElement?.getAttribute('data-id') || null;
+
+                    if (itemId && !selectedItemIds.includes(itemId)) {
+                        setSelectedItemIds([itemId]);
+                        setSelectedConnectorId(null);
+                    } else if (connectorId) {
+                        setSelectedConnectorId(connectorId);
+                        setSelectedItemIds([]);
+                    }
+                    setContextMenuState({ x: e.clientX, y: e.clientY, itemId, connectorId });
+                }}
+            >
+                <div className="absolute" style={{ width: C.CANVAS_WORLD_SIZE, height: C.CANVAS_WORLD_SIZE, top: -C.CANVAS_WORLD_SIZE / 2, left: -C.CANVAS_WORLD_SIZE / 2 }}>
+                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <pattern id="smallGrid" width={C.GRID_SIZE} height={C.GRID_SIZE} patternUnits="userSpaceOnUse">
+                                <path d={`M ${C.GRID_SIZE} 0 L 0 0 0 ${C.GRID_SIZE}`} fill="none" stroke="rgba(200,200,200,0.3)" strokeWidth="1"/>
+                            </pattern>
+                            <pattern id="grid" width={C.GRID_SIZE * 5} height={C.GRID_SIZE * 5} patternUnits="userSpaceOnUse">
+                                <rect width={C.GRID_SIZE*5} height={C.GRID_SIZE*5} fill="url(#smallGrid)"/>
+                                <path d={`M ${C.GRID_SIZE*5} 0 L 0 0 0 ${C.GRID_SIZE*5}`} fill="none" stroke="rgba(200,200,200,0.5)" strokeWidth="1"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                    </svg>
+                </div>
+
+                <div className={`absolute w-full h-full transition-opacity ${isExporting ? 'opacity-0' : 'opacity-100'}`} style={{ visibility: isExporting ? 'hidden' : 'visible' }}>
+                    {snapLines.map((line, i) => (
+                        <div key={i} className="absolute bg-pink-500" style={{
+                            ...(line.direction === 'vertical' ? { left: line.position, top: line.start, width: 1 / scale, height: line.end - line.start } : { top: line.position, left: line.start, height: 1 / scale, width: line.end - line.start })
+                        }}/>
+                    ))}
+                </div>
+                
+                <ConnectorsLayer 
+                    connectors={connectors} items={items} getHandlePosition={interactionHandlers.getHandlePosition}
+                    connectingState={connectingState} hoveredConnectorId={hoveredConnectorId}
+                    selectedConnectorId={selectedConnectorId} editingConnectorState={editingConnectorState}
+                    scale={scale}
+                    onConnectorMouseEnter={(id) => interactionStateAndSetters.setHoveredConnectorId(id)}
+                    onConnectorMouseLeave={() => interactionStateAndSetters.setHoveredConnectorId(null)}
+                    onConnectorClick={(e, id) => {
+                        e.stopPropagation();
+                        setSelectedConnectorId(id);
+                        setSelectedItemIds([]);
+                    }}
+                    onConnectorDoubleClick={handleConnectorLabelEdit}
+                />
+
+                {items.map(item => (
+                    <CanvasItemComponent
+                        key={item.id}
+                        item={item}
+                        isSelected={selectedItemIds.includes(item.id)}
+                        isSingleSelection={selectedItemIds.length === 1}
+                        isEditing={editingItemId === item.id}
+                        isHoveredForConnection={hoveredItemIdForConnection === item.id}
+                        isGeneratingAIContentForThisItem={isGeneratingAIContentFor === item.id}
+                        scale={scale}
+                        onMouseDown={(e, itemId) => handleItemMouseDown(e, itemId)}
+                        onMouseUp={e => { e.stopPropagation(); handleMouseUp(e, item.id); }}
+                        onDoubleClick={(item, itemRect) => handleItemDoubleClick(item, itemRect)}
+                        onResizeMouseDown={handleResizeMouseDown}
+                        onConnectionStart={onConnectionStart}
+                        onContentUpdate={handleContentUpdate}
+                        onUpdateItem={handleItemUpdate}
+                        onShowItemAiToolbar={handleShowItemAiToolbar}
+                        onHideItemAiToolbar={handleHideItemAiToolbar}
+                        onStartEditing={handleStartEditing}
+                        onStopEditing={handleStopEditing}
+                        getHandlePosition={interactionHandlers.getHandlePosition}
+                        connectors={connectors}
+                    />
+                ))}
+
+                {selectionBox && (
+                    <div className="absolute border-2 border-dashed border-blue-500 bg-blue-500/10" style={{
+                        left: Math.min(selectionBox.start.x, selectionBox.end.x),
+                        top: Math.min(selectionBox.start.y, selectionBox.end.y),
+                        width: Math.abs(selectionBox.start.x - selectionBox.end.x),
+                        height: Math.abs(selectionBox.start.y - selectionBox.end.y),
+                    }} />
+                )}
+            </div>
+
+            {itemAiToolbarFloatingState?.isVisible && itemForAiToolbar && (
+                <ItemAiToolbar
+                    top={itemAiToolbarFloatingState.top}
+                    left={itemAiToolbarFloatingState.left}
+                    scale={scale}
+                    item={itemForAiToolbar}
+                    isGeneratingAIContentForThisItem={isGeneratingAIContentFor === itemAiToolbarFloatingState.itemId}
+                    canGenerateDraft={itemAiToolbarFloatingState.canGenerateDraft}
+                    canUpdateDraft={itemAiToolbarFloatingState.canUpdateDraft}
+                    onGenerateTextDraft={(item, rect) => handleGenerateTextDraft(item.id, rect)}
+                    onUpdateTextDraftWithConnections={(item, rect) => handleUpdateTextDraftWithConnections(item.id, rect)}
+                    style={{ zIndex: 1000 }}
+                />
+            )}
+            
+            {tiptapToolbarState?.isVisible && (
+                <EditorToolbar
+                    editor={activeEditor}
+                    top={tiptapToolbarState.top}
+                    left={tiptapToolbarState.left}
+                    style={{ zIndex: 1000 }}
+                />
+            )}
+            
+            <ImageToolbar editor={activeEditor} />
+
+
+            {connectorLabelEditorFloatingState && (
+                <ConnectorLabelEditor
+                    id={connectorLabelEditorFloatingState.id}
+                    initialValue={connectorLabelEditorFloatingState.initialValue}
+                    initialColor={connectorLabelEditorFloatingState.initialColor}
+                    initialFontSize={connectorLabelEditorFloatingState.initialFontSize}
+                    position={connectorLabelEditorFloatingState.position}
+                    angle={connectorLabelEditorFloatingState.angle}
+                    onEndEdit={handleConnectorLabelEditorEnd}
+                    onCancel={handleConnectorLabelEditorCancel}
+                    style={{ zIndex: 900 }}
+                />
+            )}
+
+            {suggestedGroupOverlayFloatingStates.map(overlay => (
+                <SuggestedGroupOverlay 
+                    key={overlay.id} 
+                    suggestion={overlay} 
+                    scale={overlay.scale}
+                    onAccept={() => handleAcceptSuggestionFloating(overlay.id)}
+                    onReject={() => handleRejectSuggestionFloating(overlay.id)}
+                    style={{ zIndex: 900 }}
+                />
+            ))}
+
+
+            <Header 
+                onClearCanvas={handleClearCanvas}
+                onExportPng={() => handleExportPng(exportRef)}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={history.current > 0}
+                canRedo={history.current < history.length - 1}
+                className="z-50"
+            />
+
+            <LeftToolbar 
+                isPanModeActive={isPanModeActive}
+                isTextModeActive={isTextModeActive}
+                isShapeModeActive={!!shapeToAdd}
+                onTogglePanMode={() => { setIsPanModeActive(p => !p); setIsTextModeActive(false); setShapeToAdd(null); }}
+                onToggleTextMode={() => { setIsTextModeActive(p => !p); setIsPanModeActive(false); setShapeToAdd(null); }}
+                onSetShapeToAdd={(shape) => { setShapeToAdd(prev => prev === shape ? null : shape); setIsPanModeActive(false); setIsTextModeActive(false); }}
+                onToggleOutlineModal={() => setIsOutlineModalOpen(true)}
+                onToggleSocialPostModal={() => setIsSocialPostModalOpen(true)}
+                onToggleBrainstormModal={() => setIsBrainstormModalOpen(true)}
+                onToggleAiExportModal={() => setIsAiExportModalOpen(true)}
+                onToggleKeywordAnalysisModal={() => setIsKeywordAnalysisModalOpen(true)}
+                onToggleChatAssistant={() => setIsChatAssistantOpen(o => !o)}
+                className="z-50"
+            />
+
+            <div className="fixed bottom-5 right-5 z-50">
+                <ZoomControls scale={scale} onZoomIn={interactionHandlers.handleZoomIn} onZoomOut={interactionHandlers.handleZoomOut} onZoomChange={interactionHandlers.handleZoomChange} />
+            </div>
+
+            {(selectedItemIds.length > 0 || selectedConnectorId) &&
+                <ContextualActionBar 
+                    selectedItemIds={selectedItemIds}
+                    selectedItems={selectedItems}
+                    selectedConnectorId={selectedConnectorId}
+                    isGridSnapActive={interactionStateAndSetters.isGridSnapActive}
+                    isSuggestingGroups={isSuggestingGroups}
+                    isGeneratingGroupDraft={isGeneratingGroupDraft}
+                    onGroup={handleGroup}
+                    onUngroup={handleUngroup}
+                    onDelete={handleDelete}
+                    onToggleGridSnap={() => interactionStateAndSetters.setIsGridSnapActive(s => !s)}
+                    onSuggestGroups={() => handleSuggestGroups(selectedItemIds)}
+                    onGenerateGroupDraft={() => handleGenerateGroupDraft(selectedItemIds, (ids) => setSelectedItemIds(ids), (id) => setEditingItemId(id))}
+                    onBringForward={() => selectedItemIds.forEach(id => updateZIndex(id, 'forward'))}
+                    onBringToFront={() => selectedItemIds.forEach(id => updateZIndex(id, 'front'))}
+                    onSendBackward={() => selectedItemIds.forEach(id => updateZIndex(id, 'backward'))}
+                    onSendToBack={() => selectedItemIds.forEach(id => updateZIndex(id, 'back'))}
+                    isDetailsPanelVisible={isDetailsPanelVisible}
+                    onToggleDetailsPanel={() => setIsDetailsPanelVisible(v => !v)}
+                    className="z-50"
+                />
+            }
+      
+            {detailsPanelEntity && isDetailsPanelVisible && <DetailsPanel
+                entity={detailsPanelEntity}
+                onUpdateItem={handleItemUpdate}
+                onUpdateConnector={handleConnectorUpdate}
+                onClose={() => setIsDetailsPanelVisible(false)}
+                onSummarizeText={(id) => handleAiTextEdit(id, 'summarize')}
+                onExpandText={(id) => handleAiTextEdit(id, 'expand')}
+                onRefineText={(id) => handleAiTextEdit(id, 'refine')}
+                onChangeTextTone={(id, tone) => handleAiTextEdit(id, 'change_tone', tone)}
+                onAddKeywordParagraph={(id, keyword) => handleAiTextEdit(id, 'add_keyword', keyword)}
+                onInformationSearch={(id, query) => handleAiTextEdit(id, 'search_info', query)}
+                isGeneratingAIContentForThisItem={isGeneratingAIContentFor === (detailsPanelEntity as CanvasItem).id}
+                className="z-50"
+            />}
+      
+            {contextMenuState && <ContextMenu 
+                x={contextMenuState.x} y={contextMenuState.y}
+                itemId={contextMenuState.itemId}
+                connectorId={contextMenuState.connectorId}
+                onClose={() => setContextMenuState(null)}
+                onCopy={handleCopy}
+                onPaste={handlePaste}
+                onDuplicate={handleDuplicate}
+                onDelete={handleDelete}
+                onBringToFront={() => contextMenuState.itemId && updateZIndex(contextMenuState.itemId, 'front')}
+                onSendToBack={() => contextMenuState.itemId && updateZIndex(contextMenuState.itemId, 'back')}
+                onBringForward={() => contextMenuState.itemId && updateZIndex(contextMenuState.itemId, 'forward')}
+                onSendBackward={() => contextMenuState.itemId && updateZIndex(contextMenuState.itemId, 'backward')}
+                style={{ zIndex: 1000 }}
+            />}
+            
+            <AiHelpModal isOpen={isAiHelpModalVisible} onClose={() => setIsAiHelpModalVisible(false)} style={{ zIndex: 1000 }} />
+            <OutlineModal isOpen={isOutlineModalOpen} onClose={() => setIsOutlineModalOpen(false)} onGenerate={handleGenerateOutline} isGenerating={isGeneratingOutline} style={{ zIndex: 1000 }} />
+            <SocialPostModal isOpen={isSocialPostModalOpen} onClose={() => setIsSocialPostModalOpen(false)} onGenerate={handleGenerateSocialPost} isGenerating={isGeneratingSocialPost} style={{ zIndex: 1000 }} />
+            <BrainstormModal isOpen={isBrainstormModalOpen} onClose={() => setIsBrainstormModalOpen(false)} onGenerate={handleGenerateBrainstormIdeas} onAddIdeaToCanvas={handleAddIdeaToCanvas} style={{ zIndex: 1000 }} />
+            <AiExportModal isOpen={isAiExportModalOpen} onClose={() => setIsAiExportModalOpen(false)} onExport={handleExportWithAi} isExporting={isExportingWithAi} style={{ zIndex: 1000 }} />
+            <KeywordAnalysisModal
+                isOpen={isKeywordAnalysisModalOpen}
+                onClose={() => setIsKeywordAnalysisModalOpen(false)}
+                onGenerate={handleGenerateKeywordAnalysis}
+                onAddKeywordToCanvas={handleAddIdeaToCanvas}
+                isGenerating={isGeneratingKeywordAnalysis}
+                currentInput={keywordAnalysisCurrentInput}
+                lastGeneratedInput={keywordAnalysisLastGeneratedInput}
+                results={keywordAnalysisResults}
+                onInputUpdate={(value) => setKeywordAnalysisCurrentInput(value)}
+                style={{ zIndex: 1000 }}
+            />
+            <AiChatAssistant
+                isOpen={isChatAssistantOpen}
+                onClose={() => setIsChatAssistantOpen(false)}
+                messages={chatMessages}
+                onSendMessage={(message) => handleSendChatMessage(message)}
+                isSending={isSendingChatMessage}
+                isGeneratingImage={isGeneratingImage}
+                apiKeyError={apiKeyError}
+                onOpenSelectKey={() => window.aistudio.openSelectKey()}
+                onClearApiKeyError={() => setApiKeyError(null)}
+                className="z-50"
+            />
+        </div>
+    );
+};
+
+export default App;

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>비주얼 캔버스 보드</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+<style>
+    .ProseMirror {
+        height: 100%;
+    }
+    .ProseMirror:focus {
+        outline: none;
+    }
+    .ProseMirror a {
+      color: #3b82f6; /* blue-500 */
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .tiptap-toolbar button.is-active {
+        background-color: #e0e7ff;
+        color: #4f46e5;
+    }
+    .ProseMirror p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder);
+      float: left;
+      color: #adb5bd;
+      pointer-events: none;
+      height: 0;
+    }
+    /* Styles for Tiptap content to override Tailwind's reset */
+    .ProseMirror h1 { font-size: 2em; font-weight: bold; }
+    .ProseMirror h2 { font-size: 1.5em; font-weight: bold; }
+    .ProseMirror ul { list-style-type: disc; padding-left: 2rem; }
+    .ProseMirror ol { list-style-type: decimal; padding-left: 2rem; }
+    .ProseMirror img {
+        display: inline-block;
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.25rem;
+    }
+    .ProseMirror img.ProseMirror-selectednode {
+        outline: 3px solid #60a5fa;
+    }
+</style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
