@@ -314,6 +314,7 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
     return (
       <div
         data-id={item.id}
+        data-item-id={item.id}
         className="absolute cursor-grab canvas-item"
         style={{
           transform: `translate(${item.x}px, ${item.y}px)`,

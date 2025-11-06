@@ -725,6 +725,65 @@ const App: React.FC = () => {
         onToggleAiExportModal={() => setIsAiExportModalOpen(true)}
         onToggleKeywordAnalysisModal={() => setIsKeywordAnalysisModalOpen(true)}
         onToggleChatAssistant={() => setIsChatAssistantOpen((o) => !o)}
+        onGenerateTextDraft={() => {
+          const selectedItem =
+            selectedItemIds.length === 1
+              ? items.find((i) => i.id === selectedItemIds[0])
+              : null;
+          if (selectedItem) {
+            const itemElement = document.querySelector(
+              `[data-item-id="${selectedItem.id}"]`
+            );
+            if (itemElement) {
+              handleGenerateTextDraft(
+                selectedItem.id,
+                itemElement.getBoundingClientRect()
+              );
+            }
+          }
+        }}
+        onUpdateTextDraftWithConnections={() => {
+          const selectedItem =
+            selectedItemIds.length === 1
+              ? items.find((i) => i.id === selectedItemIds[0])
+              : null;
+          if (selectedItem) {
+            const itemElement = document.querySelector(
+              `[data-item-id="${selectedItem.id}"]`
+            );
+            if (itemElement) {
+              handleUpdateTextDraftWithConnections(
+                selectedItem.id,
+                itemElement.getBoundingClientRect()
+              );
+            }
+          }
+        }}
+        canGenerateDraft={(() => {
+          const selectedItem =
+            selectedItemIds.length === 1
+              ? items.find((i) => i.id === selectedItemIds[0])
+              : null;
+          if (!selectedItem || selectedItem.type === "image") return false;
+          const content = selectedItem.content || "";
+          const textContent = content.replace(/<[^>]*>/g, "").trim();
+          return textContent.length < 200;
+        })()}
+        canUpdateDraft={(() => {
+          const selectedItem =
+            selectedItemIds.length === 1
+              ? items.find((i) => i.id === selectedItemIds[0])
+              : null;
+          if (!selectedItem || selectedItem.type === "image") return false;
+          return connectors.some(
+            (c) =>
+              (c.fromId === selectedItem.id &&
+                items.some((i) => i.id === c.toId)) ||
+              (c.toId === selectedItem.id &&
+                items.some((i) => i.id === c.fromId))
+          );
+        })()}
+        isGeneratingAIContent={!!isGeneratingAIContentFor}
         className="z-50"
       />
 
