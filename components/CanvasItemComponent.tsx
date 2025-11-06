@@ -9,8 +9,8 @@ import { Color } from '@tiptap/extension-color';
 import Link from '@tiptap/extension-link';
 import Superscript from '@tiptap/extension-superscript';
 import Subscript from '@tiptap/extension-subscript';
-import Image from '@tiptap/extension-image';
 import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
+import { ResizableImage } from '../extensions/ResizableImage.tsx';
 
 
 import type { CanvasItem, HandlePosition, Point, TextItem, GradientBackground, ShapeItem, Connector } from '../types';
@@ -88,7 +88,7 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(({
       }),
       Superscript,
       Subscript,
-      Image,
+      ResizableImage,
       BubbleMenuExtension,
     ],
     content: isTextualItem ? (item as TextItem | ShapeItem).content : '',
@@ -153,7 +153,10 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(({
     if (!editor) return;
     if (isEditing && !editor.isEditable) {
         editor.setEditable(true);
-        editor.commands.focus('end');
+        // Use queueMicrotask to avoid flushSync warning
+        queueMicrotask(() => {
+            editor.commands.focus('end');
+        });
         if (itemContentRef.current) {
             onStartEditing(editor, itemContentRef.current.getBoundingClientRect());
         }
@@ -164,6 +167,13 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(({
   }, [isEditing, editor, onStartEditing, onStopEditing]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    // Always prevent zoom in text editor areas
+    if (isTextualItem) {
+        e.stopPropagation();
+        return;
+    }
+    
+    // For other items, only stop propagation if scrollable
     const element = itemContentRef.current?.querySelector('.ProseMirror');
     if (element) {
         const isScrollable = element.scrollHeight > element.clientHeight;

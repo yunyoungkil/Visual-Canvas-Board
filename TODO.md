@@ -2,6 +2,69 @@
 
 이 목록은 앞으로 개발할 기능과 개선 사항을 추적합니다. 우선순위는 변경될 수 있습니다.
 
+## 긴급 버그 수정 🔴
+
+- [x] **AI Features API Key 에러 수정** (2025-01-06)
+    - useAIFeatures.ts에서 `window.aistudio.openSelectKey` undefined 에러 해결
+    - window.aistudio 존재 여부 체크 로직 추가
+    - Fallback 처리로 환경 변수 API_KEY 사용
+    - 영향: OutlineModal, SocialPostModal, BrainstormModal
+
+- [x] **flushSync 경고 수정** (2025-01-06)
+    - CanvasItemComponent.tsx와 ResizableImage.tsx에서 flushSync 경고 해결
+    - queueMicrotask 사용으로 렌더링 사이클 외부에서 focus 호출
+    - setNodeSelection도 queueMicrotask로 감싸서 처리
+    - React 18 환경에서 Tiptap 포커스/선택 동작이 안전하게 작동하도록 개선
+    - 관련 경고 및 렌더링 오류가 더 이상 발생하지 않음
+
+## Tiptap 에디터 개선 🟡
+
+### 에디터 기능 추가
+- [ ] **헤딩 레벨 드롭다운 (H1~H4)**
+    - TextSelectionToolbar.tsx에 헤딩 선택 드롭다운 추가
+    
+- [ ] **목록 드롭다운**
+    - TextSelectionToolbar.tsx에 목록 타입 선택 (bullet, ordered) 추가
+    
+- [ ] **링크/이미지 추가 플로팅 툴바 자동 숨김**
+    - 링크나 이미지 추가 후 포커스 이동 시 플로팅 툴바 자동으로 숨기기
+    - 현재: 추가 후에도 계속 떠 있음
+
+### 이미지 기능 개선
+- [ ] **이미지 리사이징 최적화**
+    - ResizableImage.tsx 드래그 성능 개선
+    - 부드러운 리사이징 경험 제공
+    
+- [ ] **이미지 파일 추가 기능**
+    - 파일 선택 다이얼로그를 통한 이미지 추가
+    - FileMenu 또는 별도 버튼에서 접근
+    
+- [ ] **이미지 플로팅 툴바 사이즈 조정 삭제**
+    - TextSelectionToolbar.tsx에서 이미지 사이즈 조정 버튼 제거
+    
+- [ ] **이미지 플로팅 툴바 정렬 추가**
+    - TextSelectionToolbar.tsx에 이미지 정렬 버튼 추가 (좌, 중앙, 우)
+
+### 에디터 UX 개선
+- [x] **텍스트 에디터 위 휠 동작 시 줌 방지** (2025-01-06)
+    - 텍스트 에디터 영역에서 스크롤 시 캔버스 줌이 발생하지 않도록 수정
+    - CanvasItemComponent.tsx의 handleWheel 개선 완료
+
+## 캔버스 기능 추가 🟢
+
+- [ ] **투명도 조정 시 텍스트 제외**
+    - DetailsPanel에서 투명도(opacity) 조정 시 배경만 적용
+    - 텍스트는 투명도 영향 받지 않도록 수정
+    
+- [ ] **그룹 지정 UI 추가**
+    - 그룹 박스 UI 추가
+    - 그룹 관리 기능 구현
+
+- [ ] **API 관리 탭 추가**
+    - DetailsPanel에 새 탭 추가
+    - API Key 관리 UI 구현
+    - Chrome Extension Storage API로 저장
+
 ## 기능 개발
 
 - [ ] **AI 챗 어시스턴트 기능 확장: 전체 캔버스 제어**
@@ -27,3 +90,16 @@
 - [ ] **성능 최적화:** 캔버스에 아이템이 많아질 경우의 렌더링 성능 개선
 - [ ] **UI/UX 개선:** 비디오 아이템에 대한 별도 컴포넌트 및 재생 컨트롤 구현
 - [ ] **코드 리팩토링:** `App.tsx`의 로직을 기능별 커스텀 훅으로 분리 (`RECOMMENDATIONS.md` 참고)
+
+## 완료된 작업 ✅
+
+- [x] **React 18로 다운그레이드** (2025-01-06)
+    - React 19 → React 18.3.1 마이그레이션 완료
+    - Tiptap 2.4.0 → 2.10.3 업그레이드 완료
+    - 모든 의존성 충돌 해결
+    
+- [x] **이미지 리사이징 드래그 기능** (2025-01-06)
+    - ResizableImage.tsx 커스텀 Tiptap 확장 구현
+    - 이미지 클릭 선택 기능
+    - 8방향 드래그 핸들 (모서리 4개 + 좌우 엣지)
+    - flushSync 경고 해결 (queueMicrotask 사용)

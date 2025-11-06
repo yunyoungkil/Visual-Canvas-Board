@@ -2,6 +2,38 @@
 
 모든 주요 변경 사항은 이 파일에 기록됩니다.
 
+## [2.0.0] - 2025-01-06
+
+### Major Changes
+- **React 18 마이그레이션:** React 19에서 React 18.3.1로 다운그레이드하여 Tiptap 호환성 확보
+- **Tiptap 업그레이드:** Tiptap 2.4.0 → 2.10.3으로 업그레이드하여 최신 기능 및 안정성 확보
+
+### Added
+- **이미지 리사이징 기능:** 
+  - 커스텀 Tiptap 확장(ResizableImage) 구현
+  - 8방향 드래그 핸들 (모서리 4개 + 좌우 엣지)
+  - 클릭으로 이미지 선택 및 시각적 피드백 (파란색 테두리)
+- **TODO.md 파일:** 작업 목록 관리 시스템 추가
+
+### Fixed
+- **flushSync 경고 해결:** React 렌더링 사이클 내에서 발생하던 flushSync 경고를 queueMicrotask 사용으로 해결
+- **AI Features API Key 에러:** window.aistudio undefined 에러 처리 및 fallback 로직 추가
+- **텍스트 에디터 휠 스크롤:** 텍스트 에디터 영역에서 휠 스크롤 시 캔버스 줌이 발생하지 않도록 수정
+- **이미지 리사이징 드래그 상태:** 리사이징 후 드래그 상태가 계속 유지되던 문제 해결
+- **의존성 충돌:** React 19와 Tiptap 간의 peer dependency 충돌 해결
+
+### Changed
+- **package.json 업데이트:**
+  - React: 19.2.0 → 18.3.1
+  - React-DOM: 19.2.0 → 18.3.1
+  - Tiptap 관련 패키지: 2.4.0 → 2.10.3
+  - @tiptap/extension-font-size 제거 (CSS로 대체)
+
+### Technical
+- TypeScript 5.8.2 유지
+- Vite 6.2.0 유지
+- 모든 빌드 프로세스 정상 작동 확인
+
 ## [1.2.0]
 
 ### Added

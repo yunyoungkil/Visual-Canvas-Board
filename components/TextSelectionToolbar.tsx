@@ -97,18 +97,7 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor }) => {
         transform: 'translateX(-50%)'
       }}
     >
-      {(['left', 'center', 'right'] as const).map(align => (
-        <ToolbarButton
-          key={align}
-          onClick={() => { if (editor && !editor.isDestroyed) editor.chain().focus().setTextAlign(align).run(); }}
-          isActive={editor && !editor.isDestroyed && editor.isActive({ textAlign: align })}
-          title={`${align === 'left' ? '왼쪽' : align === 'center' ? '중앙' : '오른쪽'} 정렬`}
-        >
-          <Icon name={`align${align.charAt(0).toUpperCase() + align.slice(1)}` as IconName} className="w-4 h-4 text-gray-700" />
-        </ToolbarButton>
-      ))}
-      <div className="w-px h-5 bg-gray-200 mx-1"></div>
-      
+      <span className="text-xs text-gray-600 px-2">이미지 너비:</span>
       <div className="flex items-center gap-1">
         <input
             type="number"

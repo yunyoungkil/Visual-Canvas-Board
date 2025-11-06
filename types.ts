@@ -1,5 +1,3 @@
-
-
 import type { Dispatch, SetStateAction, MutableRefObject } from 'react';
 import type { Editor } from '@tiptap/react';
 
@@ -181,4 +179,19 @@ export interface CanvasStateAndActions {
 export interface AIStudio {
   hasSelectedApiKey: () => Promise<boolean>;
   openSelectKey: () => Promise<void>;
+}
+
+// Extend Window interface to include aistudio
+declare global {
+  interface Window {
+    chrome?: {
+      storage?: {
+        local: {
+          get: (keys: string[] | string, callback: (result: any) => void) => void;
+          set: (items: object, callback?: () => void) => void;
+        };
+      };
+    };
+    aistudio?: AIStudio;
+  }
 }

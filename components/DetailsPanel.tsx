@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { CanvasItem, Connector, TextItem, ShapeItem, ImageItem, BorderStyleType, ConnectorStyleType, Background, ColorStop, SolidBackground, GradientBackground, ShapeType } from '../types';
 import Icon from './Icon';
@@ -162,7 +160,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 }) => {
     const isItem = !isConnector(entity);
     const hasTextualContent = isItem && isTextualItem(entity);
-    const [activeTab, setActiveTab] = useState<'style' | 'ai'>('style');
+    const [activeTab, setActiveTab] = useState<'style' | 'ai' | 'api'>('style');
     
     useEffect(() => {
         if (activeTab === 'ai' && !hasTextualContent) {
@@ -235,7 +233,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const shapeItem = isItem && entity.type === 'shape' ? entity : null;
     const connector = isConnector(entity) ? entity : null;
 
-    const TabButton: React.FC<{ name: 'style' | 'ai'; label: string; }> = ({ name, label }) => (
+    const TabButton: React.FC<{ name: 'style' | 'ai' | 'api'; label: string; }> = ({ name, label }) => (
         <button
             onClick={() => setActiveTab(name)}
             className={`px-4 py-2 text-sm font-semibold transition-colors ${activeTab === name ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
@@ -243,6 +241,29 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             {label}
         </button>
     );
+
+    const [apiKey, setApiKey] = useState('');
+    const [apiKeyStatus, setApiKeyStatus] = useState('');
+
+    // 크롬 확장 프로그램 스토리지 연동
+    useEffect(() => {
+        if (window.chrome && window.chrome.storage) {
+            window.chrome.storage.local.get(['apiKey'], (result) => {
+                if (result.apiKey) setApiKey(result.apiKey);
+            });
+        }
+    }, []);
+
+    const handleSaveApiKey = () => {
+        if (window.chrome && window.chrome.storage) {
+            window.chrome.storage.local.set({ apiKey }, () => {
+                setApiKeyStatus('저장되었습니다!');
+                setTimeout(() => setApiKeyStatus(''), 2000);
+            });
+        } else {
+            setApiKeyStatus('크롬 확장 환경에서만 저장됩니다.');
+        }
+    };
 
     return (
         <div className={`fixed top-0 right-0 h-screen w-80 bg-white shadow-lg z-30 flex flex-col border-l border-gray-200 ${className || ''}`}>
@@ -257,6 +278,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 <nav className="flex -mb-px">
                     <TabButton name="style" label="스타일" />
                     {hasTextualContent && <TabButton name="ai" label="AI" />}
+                    <TabButton name="api" label="API 관리" />
                 </nav>
             </div>
 
@@ -333,6 +355,21 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             </div>
                         )}
                     </PanelSection>
+                </div>
+                <div style={{ display: activeTab === 'api' ? 'block' : 'none' }} className="p-4">
+                    <h3 className="text-md font-bold mb-2">API Key 관리</h3>
+                    <input
+                        type="text"
+                        value={apiKey}
+                        onChange={e => setApiKey(e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded mb-2"
+                        placeholder="Google Gemini API Key 입력"
+                    />
+                    <button
+                        onClick={handleSaveApiKey}
+                        className="px-4 py-1 bg-blue-500 text-white rounded"
+                    >저장</button>
+                    {apiKeyStatus && <div className="mt-2 text-green-600 text-sm">{apiKeyStatus}</div>}
                 </div>
             </div>
         </div>

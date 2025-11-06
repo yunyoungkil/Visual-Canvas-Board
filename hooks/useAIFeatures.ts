@@ -90,19 +90,19 @@ export const useAIFeatures = (
     const getGeminiClient = useCallback(async () => {
         setIsCheckingApiKey(true);
         try {
-            if (apiKeyError || !(await window.aistudio.hasSelectedApiKey())) {
-                await window.aistudio.openSelectKey();
-                setApiKeyError(null);
+            const apiKey = process.env.GEMINI_API_KEY;
+            if (!apiKey) {
+                throw new Error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다. .env.local 파일에 GEMINI_API_KEY를 입력하세요.");
             }
-            return new GoogleGenAI({ apiKey: process.env.API_KEY });
+            return new GoogleGenAI({ apiKey });
         } catch (error) {
             console.error("API Key selection failed:", error);
-            setApiKeyError("API 키를 선택하는 데 실패했습니다. 다시 시도해주세요.");
+            setApiKeyError("API 키를 선택하는 데 실패했습니다. .env.local 파일을 확인하세요.");
             throw new Error("API Key not selected or invalid.");
         } finally {
             setIsCheckingApiKey(false);
         }
-    }, [apiKeyError]);
+    }, []);
 
     const handleApiCall = useCallback(async <T extends (...args: any[]) => Promise<any>>(
         apiCall: T,
