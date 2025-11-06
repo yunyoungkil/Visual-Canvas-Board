@@ -5,85 +5,95 @@
 ## 긴급 버그 수정 🔴
 
 - [x] **AI Features API Key 에러 수정** (2025-01-06)
-    - useAIFeatures.ts에서 `window.aistudio.openSelectKey` undefined 에러 해결
-    - window.aistudio 존재 여부 체크 로직 추가
-    - Fallback 처리로 환경 변수 API_KEY 사용
-    - 영향: OutlineModal, SocialPostModal, BrainstormModal
+
+  - useAIFeatures.ts에서 `window.aistudio.openSelectKey` undefined 에러 해결
+  - window.aistudio 존재 여부 체크 로직 추가
+  - Fallback 처리로 환경 변수 API_KEY 사용
+  - 영향: OutlineModal, SocialPostModal, BrainstormModal
 
 - [x] **flushSync 경고 수정** (2025-01-06)
-    - CanvasItemComponent.tsx와 ResizableImage.tsx에서 flushSync 경고 해결
-    - queueMicrotask 사용으로 렌더링 사이클 외부에서 focus 호출
-    - setNodeSelection도 queueMicrotask로 감싸서 처리
-    - React 18 환경에서 Tiptap 포커스/선택 동작이 안전하게 작동하도록 개선
-    - 관련 경고 및 렌더링 오류가 더 이상 발생하지 않음
+  - CanvasItemComponent.tsx와 ResizableImage.tsx에서 flushSync 경고 해결
+  - queueMicrotask 사용으로 렌더링 사이클 외부에서 focus 호출
+  - setNodeSelection도 queueMicrotask로 감싸서 처리
+  - React 18 환경에서 Tiptap 포커스/선택 동작이 안전하게 작동하도록 개선
+  - 관련 경고 및 렌더링 오류가 더 이상 발생하지 않음
 
 ## Tiptap 에디터 개선 🟡
 
 ### 에디터 기능 추가
+
 - [ ] **헤딩 레벨 드롭다운 (H1~H4)**
-    - TextSelectionToolbar.tsx에 헤딩 선택 드롭다운 추가
-    
+
+  - TextSelectionToolbar.tsx에 헤딩 선택 드롭다운 추가
+
 - [ ] **목록 드롭다운**
-    - TextSelectionToolbar.tsx에 목록 타입 선택 (bullet, ordered) 추가
-    
+
+  - TextSelectionToolbar.tsx에 목록 타입 선택 (bullet, ordered) 추가
+
 - [ ] **링크/이미지 추가 플로팅 툴바 자동 숨김**
-    - 링크나 이미지 추가 후 포커스 이동 시 플로팅 툴바 자동으로 숨기기
-    - 현재: 추가 후에도 계속 떠 있음
+  - 링크나 이미지 추가 후 포커스 이동 시 플로팅 툴바 자동으로 숨기기
+  - 현재: 추가 후에도 계속 떠 있음
 
 ### 이미지 기능 개선
+
 - [ ] **이미지 리사이징 최적화**
-    - ResizableImage.tsx 드래그 성능 개선
-    - 부드러운 리사이징 경험 제공
-    
+
+  - ResizableImage.tsx 드래그 성능 개선
+  - 부드러운 리사이징 경험 제공
+
 - [ ] **이미지 파일 추가 기능**
-    - 파일 선택 다이얼로그를 통한 이미지 추가
-    - FileMenu 또는 별도 버튼에서 접근
-    
+
+  - 파일 선택 다이얼로그를 통한 이미지 추가
+  - FileMenu 또는 별도 버튼에서 접근
+
 - [ ] **이미지 플로팅 툴바 사이즈 조정 삭제**
-    - TextSelectionToolbar.tsx에서 이미지 사이즈 조정 버튼 제거
-    
+
+  - TextSelectionToolbar.tsx에서 이미지 사이즈 조정 버튼 제거
+
 - [ ] **이미지 플로팅 툴바 정렬 추가**
-    - TextSelectionToolbar.tsx에 이미지 정렬 버튼 추가 (좌, 중앙, 우)
+  - TextSelectionToolbar.tsx에 이미지 정렬 버튼 추가 (좌, 중앙, 우)
 
 ### 에디터 UX 개선
+
 - [x] **텍스트 에디터 위 휠 동작 시 줌 방지** (2025-01-06)
-    - 텍스트 에디터 영역에서 스크롤 시 캔버스 줌이 발생하지 않도록 수정
-    - CanvasItemComponent.tsx의 handleWheel 개선 완료
+  - 텍스트 에디터 영역에서 스크롤 시 캔버스 줌이 발생하지 않도록 수정
+  - CanvasItemComponent.tsx의 handleWheel 개선 완료
 
 ## 캔버스 기능 추가 🟢
 
-- [ ] **투명도 조정 시 텍스트 제외**
-    - DetailsPanel에서 투명도(opacity) 조정 시 배경만 적용
-    - 텍스트는 투명도 영향 받지 않도록 수정
-    
-- [ ] **그룹 지정 UI 추가**
-    - 그룹 박스 UI 추가
-    - 그룹 관리 기능 구현
+- [x] **투명도 조정 시 텍스트 제외** (2025-01-06)
 
-- [ ] **API 관리 탭 추가**
-    - DetailsPanel에 새 탭 추가
-    - API Key 관리 UI 구현
-    - Chrome Extension Storage API로 저장
+  - CanvasItemComponent.tsx에서 배경과 텍스트를 분리
+  - 배경 레이어에만 opacity 적용, 텍스트는 투명도 영향 없음
+  - 이미지: 전체에 opacity 적용
+
+- [x] **그룹 지정 UI 추가** (2025-01-06)
+  - 기존 groupId 시스템과 통합한 시각적 그룹 박스
+  - GroupBox.tsx 컴포넌트: 그룹 아이템 기반으로 동적 경계 계산
+  - 중앙 하단 툴바의 그룹화/그룹 해제 버튼으로 제어
+  - 그룹 아이템 개별 선택/이동 시 그룹 박스 자동 크기 조정
+  - 그룹 아이템 드래그 시 전체 그룹 함께 이동 (기존 로직 활용)
+  - 그룹 이름 클릭으로 직접 편집 가능 (예: "그룹 : 바이브코딩")
 
 ## 기능 개발
 
 - [ ] **AI 챗 어시스턴트 기능 확장: 전체 캔버스 제어**
-    - [ ] 아이템 이동/삭제/선택 함수 추가
-    - [ ] 아이템 스타일(색상, 글꼴 크기) 변경 함수 추가
-    - [ ] 아이템 연결/연결 해제 함수 추가
+  - [ ] 아이템 이동/삭제/선택 함수 추가
+  - [ ] 아이템 스타일(색상, 글꼴 크기) 변경 함수 추가
+  - [ ] 아이템 연결/연결 해제 함수 추가
 - [ ] **실시간 음성 대화 도입 (Gemini Live API)**
-    - [ ] 마이크 입력 및 오디오 스트리밍 기능 구현
-    - [ ] Gemini Live API 세션 연결 및 관리 로직 구현
-    - [ ] AI 음성 응답 재생 기능 구현
+  - [ ] 마이크 입력 및 오디오 스트리밍 기능 구현
+  - [ ] Gemini Live API 세션 연결 및 관리 로직 구현
+  - [ ] AI 음성 응답 재생 기능 구현
 - [ ] **AI 기반 자동 레이아웃 및 디자인 제안**
-    - [ ] 선택된 아이템들을 타임라인 형식으로 정렬하는 기능
-    - [ ] 캔버스 전체 아이템을 시각적으로 보기 좋게 재배치하는 기능
+  - [ ] 선택된 아이템들을 타임라인 형식으로 정렬하는 기능
+  - [ ] 캔버스 전체 아이템을 시각적으로 보기 좋게 재배치하는 기능
 - [ ] **고급 비디오 생성 기능**
-    - [ ] 이미지 -> 비디오 생성 기능 추가
-    - [ ] 비디오 -> 비디오 편집/확장 기능 추가
+  - [ ] 이미지 -> 비디오 생성 기능 추가
+  - [ ] 비디오 -> 비디오 편집/확장 기능 추가
 - [ ] **사용자 스타일 프로필**
-    - [ ] 사용자가 선호하는 텍스트/이미지 스타일을 저장하는 UI 구현
-    - [ ] AI 프롬프트에 저장된 스타일을 동적으로 주입하는 로직 구현
+  - [ ] 사용자가 선호하는 텍스트/이미지 스타일을 저장하는 UI 구현
+  - [ ] AI 프롬프트에 저장된 스타일을 동적으로 주입하는 로직 구현
 
 ## 개선 사항
 
@@ -94,12 +104,13 @@
 ## 완료된 작업 ✅
 
 - [x] **React 18로 다운그레이드** (2025-01-06)
-    - React 19 → React 18.3.1 마이그레이션 완료
-    - Tiptap 2.4.0 → 2.10.3 업그레이드 완료
-    - 모든 의존성 충돌 해결
-    
+
+  - React 19 → React 18.3.1 마이그레이션 완료
+  - Tiptap 2.4.0 → 2.10.3 업그레이드 완료
+  - 모든 의존성 충돌 해결
+
 - [x] **이미지 리사이징 드래그 기능** (2025-01-06)
-    - ResizableImage.tsx 커스텀 Tiptap 확장 구현
-    - 이미지 클릭 선택 기능
-    - 8방향 드래그 핸들 (모서리 4개 + 좌우 엣지)
-    - flushSync 경고 해결 (queueMicrotask 사용)
+  - ResizableImage.tsx 커스텀 Tiptap 확장 구현
+  - 이미지 클릭 선택 기능
+  - 8방향 드래그 핸들 (모서리 4개 + 좌우 엣지)
+  - flushSync 경고 해결 (queueMicrotask 사용)

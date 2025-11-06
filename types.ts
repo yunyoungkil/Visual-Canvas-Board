@@ -1,5 +1,5 @@
-import type { Dispatch, SetStateAction, MutableRefObject } from 'react';
-import type { Editor } from '@tiptap/react';
+import type { Dispatch, SetStateAction, MutableRefObject } from "react";
+import type { Editor } from "@tiptap/react";
 
 export interface Point {
   x: number;
@@ -19,12 +19,12 @@ interface CanvasItemBase {
 }
 
 export interface ImageItem extends CanvasItemBase {
-  type: 'image';
+  type: "image";
   src: string;
 }
 
 export type SolidBackground = {
-  type: 'solid';
+  type: "solid";
   color: string;
 };
 
@@ -35,8 +35,8 @@ export type ColorStop = {
 };
 
 export type GradientBackground = {
-  type: 'gradient';
-  gradientType: 'linear' | 'radial';
+  type: "gradient";
+  gradientType: "linear" | "radial";
   stops: ColorStop[];
   angle: number;
 };
@@ -44,16 +44,16 @@ export type GradientBackground = {
 export type Background = SolidBackground | GradientBackground;
 
 export interface TextItem extends CanvasItemBase {
-  type: 'text';
+  type: "text";
   content: string; // Changed from 'text' to 'content' to store HTML
   color: string;
   fontSize: number;
   fontFamily?: string;
   background: Background;
-  textAlign: 'left' | 'center' | 'right' | 'justify';
+  textAlign: "left" | "center" | "right" | "justify";
 }
 
-export type BorderStyleType = 'solid' | 'dashed' | 'dotted';
+export type BorderStyleType = "solid" | "dashed" | "dotted";
 
 export interface BorderStyle {
   width: number;
@@ -61,28 +61,28 @@ export interface BorderStyle {
   color: string;
 }
 
-export type ShapeType = 'rectangle' | 'ellipse' | 'diamond';
+export type ShapeType = "rectangle" | "ellipse" | "diamond";
 
 export interface ShapeItem extends CanvasItemBase {
-    type: 'shape';
-    shape: ShapeType;
-    background: Background;
-    border: BorderStyle;
-    content: string; // Changed from 'text' to 'content' to store HTML
-    color: string;
-    fontSize: number;
-    fontFamily?: string;
-    textAlign: 'left' | 'center' | 'right' | 'justify';
+  type: "shape";
+  shape: ShapeType;
+  background: Background;
+  border: BorderStyle;
+  content: string; // Changed from 'text' to 'content' to store HTML
+  color: string;
+  fontSize: number;
+  fontFamily?: string;
+  textAlign: "left" | "center" | "right" | "justify";
 }
 
 export type CanvasItem = ImageItem | TextItem | ShapeItem;
 
-export type HandlePosition = 'top' | 'bottom' | 'left' | 'right';
+export type HandlePosition = "top" | "bottom" | "left" | "right";
 
-export type ConnectorStyleType = 'solid' | 'dashed' | 'dotted';
+export type ConnectorStyleType = "solid" | "dashed" | "dotted";
 
 export interface Connector {
-  id:string;
+  id: string;
   fromId: string;
   toId: string;
   label?: string;
@@ -94,24 +94,24 @@ export interface Connector {
 }
 
 export interface SnapLine {
-  direction: 'vertical' | 'horizontal';
+  direction: "vertical" | "horizontal";
   position: number;
   start: number;
   end: number;
 }
 
 export interface KeywordAnalysisResult {
-    mainKeyword: string;
-    subKeywords: {
-        keyword: string;
-        relevance: string; // Qualitative description of popularity/relevance
-        contentIdeas: string[];
-    }[];
+  mainKeyword: string;
+  subKeywords: {
+    keyword: string;
+    relevance: string; // Qualitative description of popularity/relevance
+    contentIdeas: string[];
+  }[];
 }
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -143,36 +143,50 @@ export interface ConnectorLabelEditorState {
 export interface SuggestedGroup {
   id: string;
   itemIds: string[];
-  bounds: { x: number, y: number, width: number, height: number }; // canvas coords
+  bounds: { x: number; y: number; width: number; height: number }; // canvas coords
 }
 
 export interface SuggestedGroupOverlayState {
   id: string;
   itemIds: string[];
-  bounds: { x: number, y: number, width: number, height: number }; // screen coords
+  bounds: { x: number; y: number; width: number; height: number }; // screen coords
   scale: number;
 }
 
 // Fix: Define and export CanvasStateAndActions to be used across hooks.
 export interface CanvasStateAndActions {
-    items: CanvasItem[];
-    setItems: Dispatch<SetStateAction<CanvasItem[]>>;
-    connectors: Connector[];
-    setConnectors: Dispatch<SetStateAction<Connector[]>>;
-    scale: number;
-    setScale: Dispatch<SetStateAction<number>>;
-    viewOffset: Point;
-    setViewOffset: Dispatch<SetStateAction<Point>>;
-    history: { current: number; length: number; };
-    maxZIndex: MutableRefObject<number>;
-    isInitialLoad: MutableRefObject<boolean>;
-    commitState: (newItems: CanvasItem[], newConnectors: Connector[], isUndoable?: boolean) => void;
-    handleUndo: () => void;
-    handleRedo: () => void;
-    handleItemUpdate: (itemId: string, updates: Partial<CanvasItem>, shouldCommitUpdate?: boolean) => void;
-    handleConnectorUpdate: (connectorId: string, updates: Partial<Connector>) => void;
-    handleClearCanvas: () => void;
-    updateZIndex: (itemId: string, direction: 'front' | 'back' | 'forward' | 'backward') => void;
+  items: CanvasItem[];
+  setItems: Dispatch<SetStateAction<CanvasItem[]>>;
+  connectors: Connector[];
+  setConnectors: Dispatch<SetStateAction<Connector[]>>;
+  scale: number;
+  setScale: Dispatch<SetStateAction<number>>;
+  viewOffset: Point;
+  setViewOffset: Dispatch<SetStateAction<Point>>;
+  history: { current: number; length: number };
+  maxZIndex: MutableRefObject<number>;
+  isInitialLoad: MutableRefObject<boolean>;
+  commitState: (
+    newItems: CanvasItem[],
+    newConnectors: Connector[],
+    isUndoable?: boolean
+  ) => void;
+  handleUndo: () => void;
+  handleRedo: () => void;
+  handleItemUpdate: (
+    itemId: string,
+    updates: Partial<CanvasItem>,
+    shouldCommitUpdate?: boolean
+  ) => void;
+  handleConnectorUpdate: (
+    connectorId: string,
+    updates: Partial<Connector>
+  ) => void;
+  handleClearCanvas: () => void;
+  updateZIndex: (
+    itemId: string,
+    direction: "front" | "back" | "forward" | "backward"
+  ) => void;
 }
 
 // Declare the AIStudio interface to be used as a type for window.aistudio
@@ -187,7 +201,10 @@ declare global {
     chrome?: {
       storage?: {
         local: {
-          get: (keys: string[] | string, callback: (result: any) => void) => void;
+          get: (
+            keys: string[] | string,
+            callback: (result: any) => void
+          ) => void;
           set: (items: object, callback?: () => void) => void;
         };
       };
