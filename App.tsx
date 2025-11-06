@@ -663,7 +663,13 @@ const App: React.FC = () => {
         />
       )}
 
-      <ImageToolbar editor={activeEditor} />
+      {tiptapToolbarState && (
+        <ImageToolbar
+          editor={activeEditor}
+          top={tiptapToolbarState.top}
+          left={tiptapToolbarState.left}
+        />
+      )}
 
       {connectorLabelEditorFloatingState && (
         <ConnectorLabelEditor

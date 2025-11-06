@@ -73,12 +73,14 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       img.onload = () => {
         const width = Math.min(img.width, 600);
         (editor.chain().focus() as any)
-          .setImage({ src: imageUrl, width })
+          .setImage({ src: imageUrl, width, align: "left" })
           .run();
       };
       img.onerror = () => {
         // Fallback: insert without width
-        (editor.chain().focus() as any).setImage({ src: imageUrl }).run();
+        (editor.chain().focus() as any)
+          .setImage({ src: imageUrl, align: "left" })
+          .run();
       };
       img.src = imageUrl;
     }
@@ -316,13 +318,21 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                                       editorPositionRef.current,
                                       {
                                         type: "image",
-                                        attrs: { src: dataUrl, width },
+                                        attrs: {
+                                          src: dataUrl,
+                                          width,
+                                          align: "left",
+                                        },
                                       }
                                     )
                                     .run();
                                 } else {
                                   (editor.chain().focus() as any)
-                                    .setImage({ src: dataUrl, width })
+                                    .setImage({
+                                      src: dataUrl,
+                                      width,
+                                      align: "left",
+                                    })
                                     .run();
                                 }
                               });
@@ -338,13 +348,13 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                                       editorPositionRef.current,
                                       {
                                         type: "image",
-                                        attrs: { src: dataUrl },
+                                        attrs: { src: dataUrl, align: "left" },
                                       }
                                     )
                                     .run();
                                 } else {
                                   (editor.chain().focus() as any)
-                                    .setImage({ src: dataUrl })
+                                    .setImage({ src: dataUrl, align: "left" })
                                     .run();
                                 }
                               });

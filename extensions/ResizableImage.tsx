@@ -2,6 +2,12 @@ import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 
+// Global flag to prevent canvas interactions during image resize
+let globalImageResizing = false;
+
+// Export function to check if image is being resized
+export const isImageResizing = () => globalImageResizing;
+
 interface ResizableImageComponentProps {
   node: any;
   updateAttributes: (attrs: any) => void;
@@ -45,61 +51,84 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
       const img = imgRef.current;
       if (!img) return;
 
+      // Get the actual rendered width of the image
       const rect = img.getBoundingClientRect();
       const startX = e.clientX;
       const startY = e.clientY;
-      const startWidth = rect.width;
+      const startWidth = rect.width; // Use actual rendered width
+
+      // Detect canvas scale by comparing natural size to rendered size
+      // Find the canvas transform scale by traversing up the DOM tree
+      let canvasScale = 1;
+      let element = img.parentElement;
+      while (element) {
+        const transform = window.getComputedStyle(element).transform;
+        if (transform && transform !== "none") {
+          const matrix = new DOMMatrix(transform);
+          canvasScale *= matrix.a; // matrix.a is scaleX
+        }
+        element = element.parentElement;
+        // Stop at canvas-container level to avoid unnecessary traversal
+        if (element?.classList.contains("canvas-container")) break;
+      }
 
       resizingRef.current = true;
       setIsResizing(true);
+      globalImageResizing = true; // Set global flag
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!resizingRef.current) return;
+
         moveEvent.preventDefault();
         moveEvent.stopPropagation();
 
-        if (!img) return;
-
         const deltaX = moveEvent.clientX - startX;
-        const deltaY = moveEvent.clientY - startY;
-        let newWidth = startWidth;
+        // Compensate for canvas scale - divide by scale to get CSS pixel delta
+        const scaledDeltaX = deltaX / canvasScale;
+        let newWidth = startWidth / canvasScale; // Convert screen width to CSS width
 
-        if (corner.includes("e")) {
-          newWidth = startWidth + deltaX;
-        } else if (corner.includes("w")) {
-          newWidth = startWidth - deltaX;
+        // Calculate new width based on corner/edge
+        if (corner === "e" || corner === "se" || corner === "ne") {
+          // Right side - add delta
+          newWidth = newWidth + scaledDeltaX;
+        } else if (corner === "w" || corner === "sw" || corner === "nw") {
+          // Left side - subtract delta
+          newWidth = newWidth - scaledDeltaX;
         }
 
-        if (corner.length === 2) {
-          const avgDelta = (Math.abs(deltaX) + Math.abs(deltaY)) / 2;
-          if (corner.includes("e")) {
-            newWidth = startWidth + avgDelta * (deltaX > 0 ? 1 : -1);
-          } else {
-            newWidth = startWidth + avgDelta * (deltaX > 0 ? -1 : 1);
-          }
-        }
-
+        // Clamp width between min and max
         newWidth = Math.max(50, Math.min(newWidth, 1200));
+
+        // Update immediately for smooth resizing
         updateAttributes({ width: Math.round(newWidth) });
       };
 
-      const handleMouseUp = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        upEvent.preventDefault();
+        upEvent.stopPropagation();
 
+        // Immediately stop resizing
+        resizingRef.current = false;
+        setIsResizing(false);
+
+        // Remove event listeners
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
 
-        // Reset state after a short delay to prevent click event
+        // Keep global flag set for a short period to prevent immediate canvas interactions
         setTimeout(() => {
-          resizingRef.current = false;
-          setIsResizing(false);
-        }, 50);
+          globalImageResizing = false;
+        }, 150); // Extended delay to ensure all events are processed
       };
 
       document.addEventListener("mousemove", handleMouseMove, {
         passive: false,
+        capture: true,
       });
-      document.addEventListener("mouseup", handleMouseUp, { passive: false });
+      document.addEventListener("mouseup", handleMouseUp, {
+        passive: false,
+        capture: true,
+      });
     },
     [updateAttributes]
   );
@@ -129,18 +158,27 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
   const width = node.attrs.width || "auto";
   const src = node.attrs.src;
   const alt = node.attrs.alt || "";
+  const align = node.attrs.align || "left";
 
-  // Debug log
-  console.log("ResizableImage render:", {
-    src: src?.substring(0, 50),
-    width,
-    attrs: node.attrs,
-  });
+  // Calculate alignment styles
+  const alignmentStyle =
+    align === "center"
+      ? { display: "flex", justifyContent: "center" }
+      : align === "right"
+      ? { display: "flex", justifyContent: "flex-end" }
+      : {};
 
   return (
     <NodeViewWrapper
       className="block my-4"
-      style={{ pointerEvents: isResizing ? "none" : "auto" }}
+      style={{
+        pointerEvents: isResizing ? "none" : "auto",
+        ...alignmentStyle,
+      }}
+      onMouseDown={(e) => {
+        // Prevent canvas item drag when interacting with image
+        e.stopPropagation();
+      }}
     >
       <div
         className={`relative inline-block ${
@@ -148,6 +186,10 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
         }`}
         style={{ maxWidth: "100%", pointerEvents: "auto" }}
         onClick={handleImageClick}
+        onMouseDown={(e) => {
+          // Prevent canvas item drag
+          e.stopPropagation();
+        }}
       >
         <img
           ref={imgRef}
@@ -159,43 +201,66 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
             display: "block",
             cursor: isResizing ? "ew-resize" : "pointer",
             userSelect: "none",
+            pointerEvents: isResizing ? "none" : "auto",
           }}
           draggable={false}
           onError={(e) => console.error("Image load error:", e)}
+          onMouseDown={(e) => {
+            // Prevent any parent drag handlers
+            e.stopPropagation();
+          }}
         />
 
         {selected && !isResizing && (
           <>
             <div
               className="absolute top-0 left-0 w-2 h-full cursor-ew-resize hover:bg-blue-500 hover:opacity-50 z-10"
-              onMouseDown={(e) => handleResizeStart(e, "w")}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleResizeStart(e, "w");
+              }}
               style={{ transform: "translateX(-50%)" }}
             />
 
             <div
               className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-blue-500 hover:opacity-50 z-10"
-              onMouseDown={(e) => handleResizeStart(e, "e")}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleResizeStart(e, "e");
+              }}
               style={{ transform: "translateX(50%)" }}
             />
 
             <div
               className="absolute top-0 left-0 w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize z-20"
-              onMouseDown={(e) => handleResizeStart(e, "nw")}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleResizeStart(e, "nw");
+              }}
               style={{ transform: "translate(-50%, -50%)" }}
             />
             <div
               className="absolute top-0 right-0 w-3 h-3 bg-blue-500 rounded-full cursor-nesw-resize z-20"
-              onMouseDown={(e) => handleResizeStart(e, "ne")}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleResizeStart(e, "ne");
+              }}
               style={{ transform: "translate(50%, -50%)" }}
             />
             <div
               className="absolute bottom-0 left-0 w-3 h-3 bg-blue-500 rounded-full cursor-nesw-resize z-20"
-              onMouseDown={(e) => handleResizeStart(e, "sw")}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleResizeStart(e, "sw");
+              }}
               style={{ transform: "translate(-50%, 50%)" }}
             />
             <div
               className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize z-20"
-              onMouseDown={(e) => handleResizeStart(e, "se")}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleResizeStart(e, "se");
+              }}
               style={{ transform: "translate(50%, 50%)" }}
             />
           </>
@@ -234,6 +299,17 @@ export const ResizableImage = Node.create({
             return {};
           }
           return { width: attributes.width };
+        },
+      },
+      align: {
+        default: "left",
+        parseHTML: (element) => {
+          return element.getAttribute("data-align") || "left";
+        },
+        renderHTML: (attributes) => {
+          return {
+            "data-align": attributes.align,
+          };
         },
       },
     };

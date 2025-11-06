@@ -11,6 +11,7 @@ import type {
   ShapeItem,
 } from "../types";
 import * as C from "../constants";
+import { isImageResizing } from "../extensions/ResizableImage";
 
 type CanvasStateAndActions = {
   items: CanvasItem[];
@@ -266,6 +267,13 @@ export const useCanvasInteraction = ({
 
   const handleItemMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, id: string) => {
+      // Prevent interaction if image is being resized
+      if (isImageResizing()) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
       e.stopPropagation();
       clickStartPos.current = { x: e.clientX, y: e.clientY };
       window.getSelection()?.empty();
@@ -376,6 +384,13 @@ export const useCanvasInteraction = ({
 
   const handleCanvasMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      // Prevent interaction if image is being resized
+      if (isImageResizing()) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
       if (
         (e.target as HTMLElement).closest(".canvas-item") ||
         (e.target as HTMLElement).closest(".tiptap-toolbar")
