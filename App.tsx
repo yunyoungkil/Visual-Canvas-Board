@@ -46,6 +46,8 @@ const App: React.FC = () => {
     scale,
     viewOffset,
     history,
+    groupMetadata,
+    setGroupMetadata,
     handleUndo,
     handleRedo,
     handleClearCanvas,
@@ -56,11 +58,6 @@ const App: React.FC = () => {
 
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isDetailsPanelVisible, setIsDetailsPanelVisible] = useState(false);
-
-  // Group metadata (stored separately from items)
-  const [groupMetadata, setGroupMetadata] = useState<
-    Map<string, { color: string; label: string }>
-  >(new Map());
 
   const [itemAiToolbarFloatingState, setItemAiToolbarFloatingState] =
     useState<ItemAiToolbarState | null>(null);
@@ -404,10 +401,12 @@ const App: React.FC = () => {
   // Group label update handler
   const handleUpdateGroupLabel = useCallback(
     (groupId: string, label: string) => {
+      console.log("[App] Updating group label:", { groupId, label });
       setGroupMetadata((prev) => {
         const newMap = new Map(prev);
         const existing = newMap.get(groupId) || { color: "#3b82f6", label: "" };
         newMap.set(groupId, { ...existing, label });
+        console.log("[App] New groupMetadata Map:", newMap);
         return newMap;
       });
     },
@@ -571,6 +570,11 @@ const App: React.FC = () => {
             color: "#3b82f6",
             label: `그룹`,
           };
+          console.log("[App] Rendering GroupBox:", {
+            groupId,
+            metadata,
+            groupMetadataSize: groupMetadata.size,
+          });
           return (
             <GroupBox
               key={groupId}

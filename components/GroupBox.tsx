@@ -53,7 +53,7 @@ const GroupBox: React.FC<GroupBoxProps> = ({
         transform: `translate(${groupX}px, ${groupY}px)`,
         width: groupWidth,
         height: groupHeight,
-        zIndex: -1, // Groups are behind items
+        zIndex: 0, // Groups are at base level, items will be above with their zIndex
       }}
     >
       {/* Group box border */}
@@ -66,8 +66,12 @@ const GroupBox: React.FC<GroupBoxProps> = ({
 
       {/* Group header - editable, pointer-events enabled */}
       <div
-        className="absolute -top-8 left-0 px-3 py-1 text-sm font-semibold text-white rounded-t-md pointer-events-auto"
-        style={{ backgroundColor: color }}
+        className="absolute -top-8 left-0 px-3 py-1 text-sm font-semibold text-white rounded-t-md pointer-events-auto cursor-pointer"
+        style={{ backgroundColor: color, zIndex: 1000 }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
         {isEditingLabel ? (
           <input
@@ -83,20 +87,27 @@ const GroupBox: React.FC<GroupBoxProps> = ({
                 setIsEditingLabel(false);
               }
             }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
             className="px-2 py-1 text-sm font-semibold text-gray-900 bg-white rounded border-2 border-blue-500 outline-none"
             style={{ minWidth: "150px" }}
             autoFocus
-            onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <span
             className="cursor-pointer hover:underline"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               setIsEditingLabel(true);
             }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
           >
-            {labelValue || `그룹 : ${groupId}`}
+            {labelValue || `그룹 : ${groupId.substring(0, 8)}`}
           </span>
         )}
       </div>
