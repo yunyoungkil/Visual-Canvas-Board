@@ -21,7 +21,11 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [isImageMenuOpen, setIsImageMenuOpen] = useState(false);
+  const [isHeadingMenuOpen, setIsHeadingMenuOpen] = useState(false);
+  const [isListMenuOpen, setIsListMenuOpen] = useState(false);
   const imageMenuRef = React.useRef<HTMLDivElement>(null);
+  const headingMenuRef = React.useRef<HTMLDivElement>(null);
+  const listMenuRef = React.useRef<HTMLDivElement>(null);
   const editorPositionRef = React.useRef<number | null>(null);
 
   if (!editor || editor.isDestroyed) {
@@ -111,6 +115,52 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isImageMenuOpen]);
+
+  // Close heading menu when clicking outside
+  useEffect(() => {
+    if (!isHeadingMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        headingMenuRef.current &&
+        !headingMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsHeadingMenuOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isHeadingMenuOpen]);
+
+  // Close list menu when clicking outside
+  useEffect(() => {
+    if (!isListMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        listMenuRef.current &&
+        !listMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsListMenuOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isListMenuOpen]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -207,6 +257,120 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         </div>
       ) : (
         <>
+          {/* Heading Dropdown */}
+          <div className="relative" ref={headingMenuRef}>
+            <button
+              className="px-2 py-1.5 rounded-sm hover:bg-gray-100 text-xs font-medium text-gray-700"
+              title="헤딩 선택"
+              onClick={() => setIsHeadingMenuOpen(!isHeadingMenuOpen)}
+            >
+              {editor.isActive("heading", { level: 1 })
+                ? "H1"
+                : editor.isActive("heading", { level: 2 })
+                ? "H2"
+                : editor.isActive("heading", { level: 3 })
+                ? "H3"
+                : editor.isActive("heading", { level: 4 })
+                ? "H4"
+                : "P"}
+              <span className="ml-1">▼</span>
+            </button>
+            {isHeadingMenuOpen && (
+              <div
+                className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[100px]"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <button
+                  onClick={() => {
+                    editor.chain().focus().setParagraph().run();
+                    setIsHeadingMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 rounded-t-md"
+                >
+                  일반 텍스트
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().toggleHeading({ level: 1 }).run();
+                    setIsHeadingMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-lg font-bold hover:bg-gray-100"
+                >
+                  헤딩 1
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().toggleHeading({ level: 2 }).run();
+                    setIsHeadingMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-base font-bold hover:bg-gray-100"
+                >
+                  헤딩 2
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().toggleHeading({ level: 3 }).run();
+                    setIsHeadingMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm font-bold hover:bg-gray-100"
+                >
+                  헤딩 3
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().toggleHeading({ level: 4 }).run();
+                    setIsHeadingMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-bold hover:bg-gray-100 rounded-b-md"
+                >
+                  헤딩 4
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* List Dropdown */}
+          <div className="relative" ref={listMenuRef}>
+            <button
+              className="p-1.5 rounded-sm hover:bg-gray-100"
+              title="목록"
+              onClick={() => setIsListMenuOpen(!isListMenuOpen)}
+            >
+              <Icon name="list" className="w-4 h-4 text-gray-700" />
+            </button>
+            {isListMenuOpen && (
+              <div
+                className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <button
+                  onClick={() => {
+                    editor.chain().focus().toggleBulletList().run();
+                    setIsListMenuOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 rounded-t-md ${
+                    editor.isActive("bulletList") ? "bg-gray-100" : ""
+                  }`}
+                >
+                  • 글머리 기호
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().toggleOrderedList().run();
+                    setIsListMenuOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 rounded-b-md ${
+                    editor.isActive("orderedList") ? "bg-gray-100" : ""
+                  }`}
+                >
+                  1. 번호 매기기
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-5 bg-gray-200 mx-1"></div>
+
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             isActive={editor.isActive("bold")}

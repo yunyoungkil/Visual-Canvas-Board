@@ -864,8 +864,19 @@ export const useCanvasInteraction = ({
   }, [selectedItemIds, items, connectors, commitState, setItems]);
 
   const handleUngroup = useCallback(() => {
+    // Collect all groupIds from selected items
+    const groupIdsToUngroup = new Set<string>();
+    items.forEach((item) => {
+      if (selectedItemIds.includes(item.id) && item.groupId) {
+        groupIdsToUngroup.add(item.groupId);
+      }
+    });
+
+    // Remove groupId from all items in those groups
     const newItems = items.map((item) =>
-      selectedItemIds.includes(item.id) ? { ...item, groupId: null } : item
+      item.groupId && groupIdsToUngroup.has(item.groupId)
+        ? { ...item, groupId: null }
+        : item
     );
     commitState(newItems, connectors);
     setItems(newItems);
