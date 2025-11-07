@@ -157,20 +157,28 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
       const itemContent = (item as TextItem | ShapeItem).content || "";
       const editorContent = editor.getHTML();
 
+      // Only update content if it actually differs
+      // This prevents losing images when resizing the text box
       if (itemContent !== editorContent) {
         editor.commands.setContent(itemContent, false);
       }
+    }, [editor, isTextualItem, (item as TextItem | ShapeItem).content]);
 
+    // Separate effect for style updates to avoid content reset
+    useEffect(() => {
+      if (!editor || !isTextualItem) return;
+
+      const textItem = item as TextItem | ShapeItem;
       editor.setOptions({
         editorProps: {
           attributes: {
             // Add w-full to ensure the editor takes full width inside its flex container (for shapes)
             class: `max-w-none focus:outline-none w-full`,
-            style: `color: ${item.color}; font-size: ${item.fontSize}px;`,
+            style: `color: ${textItem.color}; font-size: ${textItem.fontSize}px;`,
           },
         },
       });
-    }, [editor, item, isTextualItem]);
+    }, [editor, isTextualItem, item]);
 
     // Sync item.textAlign (from DetailsPanel) to editor
     useEffect(() => {

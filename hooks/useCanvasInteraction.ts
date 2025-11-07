@@ -32,6 +32,7 @@ type CanvasStateAndActions = {
   handleRedo: () => void;
   selectedItemIds: string[];
   setSelectedItemIds: React.Dispatch<React.SetStateAction<string[]>>;
+  activeEditor?: any; // Tiptap Editor instance
 };
 
 export const useCanvasInteraction = ({
@@ -49,6 +50,7 @@ export const useCanvasInteraction = ({
   handleRedo,
   selectedItemIds,
   setSelectedItemIds,
+  activeEditor,
 }: CanvasStateAndActions) => {
   const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(
     null
@@ -398,6 +400,17 @@ export const useCanvasInteraction = ({
         return;
       clickStartPos.current = { x: e.clientX, y: e.clientY };
       window.getSelection()?.empty();
+
+      // Clear Tiptap editor selection (e.g., selected images)
+      if (activeEditor && !activeEditor.isDestroyed) {
+        queueMicrotask(() => {
+          try {
+            activeEditor.commands.blur();
+          } catch (e) {
+            // Ignore errors if editor is being destroyed
+          }
+        });
+      }
 
       if (isPanModeActive || isSpacePanning) {
         setPanningState({
@@ -758,9 +771,12 @@ export const useCanvasInteraction = ({
       setConnectingState(null);
     };
 
-    window.addEventListener('imageResizeComplete', handleImageResizeComplete);
+    window.addEventListener("imageResizeComplete", handleImageResizeComplete);
     return () => {
-      window.removeEventListener('imageResizeComplete', handleImageResizeComplete);
+      window.removeEventListener(
+        "imageResizeComplete",
+        handleImageResizeComplete
+      );
     };
   }, []);
 

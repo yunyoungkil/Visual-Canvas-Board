@@ -11,12 +11,11 @@
   - ResizableImage.tsx와 useCanvasInteraction.ts 간 명시적 동기화
   - 모든 드래그 상태(draggingState, selectionBox 등) 완전 초기화
 
-- [ ] **파일 업로드 이미지 정렬 문제** (2025-01-07)
+- [x] **파일 업로드 이미지 정렬 문제** (2025-01-07)
 
-  - 파일로 추가한 이미지에서 정렬 기능이 제대로 작동하지 않음
-  - 정렬 버튼 클릭 시 약간의 움직임은 있으나 완전히 정렬되지 않음
-  - URL로 추가한 이미지는 정상 작동
-  - Tiptap node selection 및 updateAttributes 로직 재검토 필요
+  - 파일로 추가한 이미지에서 정렬 기능이 제대로 작동하지 않았던 문제 해결
+  - queueMicrotask와 다중 fallback 로직으로 모든 이미지 정렬 가능
+  - URL 이미지, 파일 업로드 이미지 모두 정상 작동 확인
 
 - [x] **AI Features API Key 에러 수정** (2025-01-06)
 
@@ -84,7 +83,19 @@
   - TextSelectionToolbar에 이미지 정렬 툴바 추가
   - 정렬 버튼 하이라이트 상태 추적
   - queueMicrotask로 안정성 개선
-  - **파일 업로드 이미지 정렬 문제**: URL 이미지는 작동하나 파일 업로드 이미지는 부분적으로만 작동 → 긴급 버그 섹션으로 이동
+  - URL 이미지, 파일 업로드 이미지 모두 정렬 기능 정상 작동
+
+- [x] **Tiptap 에디터 포커스 관리 개선** (2025-01-07)
+
+  - 캔버스 클릭 시 에디터(이미지 등) 선택 자동 해제
+  - activeEditor를 useCanvasInteraction에 전달하여 중앙 관리
+  - editor.commands.blur()로 안전한 포커스 해제
+
+- [x] **텍스트 에디터 리사이징 시 이미지 보존** (2025-01-07)
+
+  - useEffect 의존성 배열 최적화로 불필요한 content 재설정 방지
+  - content 변경과 style 변경을 별도 effect로 분리
+  - 텍스트 박스 크기 조절 시에도 삽입된 이미지 유지
 
 - [x] **이미지 리사이징 줌 레벨 대응** (2025-01-06)
   - 캔버스 scale 자동 감지 (DOM transform matrix 탐색)

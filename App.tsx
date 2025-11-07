@@ -173,6 +173,7 @@ const App: React.FC = () => {
     ...canvasStateAndActions,
     selectedItemIds,
     setSelectedItemIds,
+    activeEditor,
   });
 
   const { canvasToScreen } = interactionHandlers;
