@@ -23,9 +23,22 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [isImageMenuOpen, setIsImageMenuOpen] = useState(false);
   const [isHeadingMenuOpen, setIsHeadingMenuOpen] = useState(false);
   const [isListMenuOpen, setIsListMenuOpen] = useState(false);
+  const [isFontMenuOpen, setIsFontMenuOpen] = useState(false);
+  const [isTableMenuOpen, setIsTableMenuOpen] = useState(false);
+  const [tableGridRows, setTableGridRows] = useState(0);
+  const [tableGridCols, setTableGridCols] = useState(0);
+  const [isBgColorMenuOpen, setIsBgColorMenuOpen] = useState(false);
+  const [isHrMenuOpen, setIsHrMenuOpen] = useState(false);
+  const [bgColor, setBgColor] = useState("#ffff00");
+  const [bgOpacity, setBgOpacity] = useState(50);
+  const [hrSpacing, setHrSpacing] = useState(10);
   const imageMenuRef = React.useRef<HTMLDivElement>(null);
   const headingMenuRef = React.useRef<HTMLDivElement>(null);
   const listMenuRef = React.useRef<HTMLDivElement>(null);
+  const fontMenuRef = React.useRef<HTMLDivElement>(null);
+  const tableMenuRef = React.useRef<HTMLDivElement>(null);
+  const bgColorMenuRef = React.useRef<HTMLDivElement>(null);
+  const hrMenuRef = React.useRef<HTMLDivElement>(null);
   const editorPositionRef = React.useRef<number | null>(null);
 
   if (!editor || editor.isDestroyed) {
@@ -162,6 +175,98 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     };
   }, [isListMenuOpen]);
 
+  // Close font menu when clicking outside
+  useEffect(() => {
+    if (!isFontMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        fontMenuRef.current &&
+        !fontMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsFontMenuOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isFontMenuOpen]);
+
+  // Close table menu when clicking outside
+  useEffect(() => {
+    if (!isTableMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        tableMenuRef.current &&
+        !tableMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsTableMenuOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isTableMenuOpen]);
+
+  // Close background color menu when clicking outside
+  useEffect(() => {
+    if (!isBgColorMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        bgColorMenuRef.current &&
+        !bgColorMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsBgColorMenuOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isBgColorMenuOpen]);
+
+  // Close HR menu when clicking outside
+  useEffect(() => {
+    if (!isHrMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        hrMenuRef.current &&
+        !hrMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsHrMenuOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isHrMenuOpen]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
   };
@@ -260,70 +365,81 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
           {/* Heading Dropdown */}
           <div className="relative" ref={headingMenuRef}>
             <button
-              className="px-2 py-1.5 rounded-sm hover:bg-gray-100 text-xs font-medium text-gray-700"
-              title="헤딩 선택"
+              className="px-2 py-1.5 rounded-sm hover:bg-gray-100 text-xs font-medium text-gray-700 min-w-[60px] text-left"
+              title="스타일 선택"
               onClick={() => setIsHeadingMenuOpen(!isHeadingMenuOpen)}
             >
               {editor.isActive("heading", { level: 1 })
-                ? "H1"
+                ? "제목1"
                 : editor.isActive("heading", { level: 2 })
-                ? "H2"
+                ? "제목2"
                 : editor.isActive("heading", { level: 3 })
-                ? "H3"
+                ? "제목3"
                 : editor.isActive("heading", { level: 4 })
-                ? "H4"
-                : "P"}
+                ? "제목4"
+                : "본문"}
               <span className="ml-1">▼</span>
             </button>
             {isHeadingMenuOpen && (
               <div
-                className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[100px]"
+                className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[140px]"
                 onMouseDown={(e) => e.preventDefault()}
               >
-                <button
-                  onClick={() => {
-                    editor.chain().focus().setParagraph().run();
-                    setIsHeadingMenuOpen(false);
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 rounded-t-md"
-                >
-                  일반 텍스트
-                </button>
                 <button
                   onClick={() => {
                     editor.chain().focus().toggleHeading({ level: 1 }).run();
                     setIsHeadingMenuOpen(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-lg font-bold hover:bg-gray-100"
+                  className={`w-full px-3 py-2 text-left text-2xl font-bold hover:bg-gray-100 rounded-t-md ${
+                    editor.isActive("heading", { level: 1 }) ? "bg-blue-50" : ""
+                  }`}
                 >
-                  헤딩 1
+                  제목1
                 </button>
                 <button
                   onClick={() => {
                     editor.chain().focus().toggleHeading({ level: 2 }).run();
                     setIsHeadingMenuOpen(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-base font-bold hover:bg-gray-100"
+                  className={`w-full px-3 py-2 text-left text-xl font-bold hover:bg-gray-100 ${
+                    editor.isActive("heading", { level: 2 }) ? "bg-blue-50" : ""
+                  }`}
                 >
-                  헤딩 2
+                  제목2
                 </button>
                 <button
                   onClick={() => {
                     editor.chain().focus().toggleHeading({ level: 3 }).run();
                     setIsHeadingMenuOpen(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm font-bold hover:bg-gray-100"
+                  className={`w-full px-3 py-2 text-left text-lg font-bold hover:bg-gray-100 ${
+                    editor.isActive("heading", { level: 3 }) ? "bg-blue-50" : ""
+                  }`}
                 >
-                  헤딩 3
+                  제목3
                 </button>
                 <button
                   onClick={() => {
                     editor.chain().focus().toggleHeading({ level: 4 }).run();
                     setIsHeadingMenuOpen(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-xs font-bold hover:bg-gray-100 rounded-b-md"
+                  className={`w-full px-3 py-2 text-left text-base font-semibold hover:bg-gray-100 ${
+                    editor.isActive("heading", { level: 4 }) ? "bg-blue-50" : ""
+                  }`}
                 >
-                  헤딩 4
+                  제목4
+                </button>
+                <div className="w-full h-px bg-gray-200 my-1"></div>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().setParagraph().run();
+                    setIsHeadingMenuOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-base hover:bg-gray-100 rounded-b-md ${
+                    !editor.isActive("heading") ? "bg-blue-50" : ""
+                  }`}
+                >
+                  본문
                 </button>
               </div>
             )}
@@ -364,6 +480,86 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   }`}
                 >
                   1. 번호 매기기
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Font Family Dropdown */}
+          <div className="relative" ref={fontMenuRef}>
+            <button
+              className="px-2 py-1.5 rounded-sm hover:bg-gray-100 text-xs font-medium text-gray-700 min-w-[80px] text-left"
+              title="폰트 선택"
+              onClick={() => setIsFontMenuOpen(!isFontMenuOpen)}
+            >
+              {editor.isActive("textStyle", { fontFamily: "Noto Sans KR" })
+                ? "Noto Sans"
+                : editor.isActive("textStyle", { fontFamily: "Roboto" })
+                ? "Roboto"
+                : editor.isActive("textStyle", { fontFamily: "Nanum Gothic" })
+                ? "나눔고딕"
+                : editor.isActive("textStyle", { fontFamily: "Nanum Myeongjo" })
+                ? "나눔명조"
+                : "기본"}
+              <span className="ml-1">▼</span>
+            </button>
+            {isFontMenuOpen && (
+              <div
+                className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[140px]"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <button
+                  onClick={() => {
+                    editor.chain().focus().unsetFontFamily().run();
+                    setIsFontMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 rounded-t-md"
+                >
+                  기본
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().setFontFamily("Noto Sans KR").run();
+                    setIsFontMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                  style={{ fontFamily: "Noto Sans KR" }}
+                >
+                  Noto Sans KR
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().setFontFamily("Roboto").run();
+                    setIsFontMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                  style={{ fontFamily: "Roboto" }}
+                >
+                  Roboto
+                </button>
+                <button
+                  onClick={() => {
+                    editor.chain().focus().setFontFamily("Nanum Gothic").run();
+                    setIsFontMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                  style={{ fontFamily: "Nanum Gothic" }}
+                >
+                  나눔고딕
+                </button>
+                <button
+                  onClick={() => {
+                    editor
+                      .chain()
+                      .focus()
+                      .setFontFamily("Nanum Myeongjo")
+                      .run();
+                    setIsFontMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 rounded-b-md"
+                  style={{ fontFamily: "Nanum Myeongjo" }}
+                >
+                  나눔명조
                 </button>
               </div>
             )}
@@ -418,6 +614,87 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               style={{ backgroundColor: currentColor || "transparent" }}
             ></span>
           </div>
+
+          {/* Background Color with Opacity */}
+          <div className="relative" ref={bgColorMenuRef}>
+            <button
+              className="p-1.5 rounded-sm hover:bg-gray-100 relative"
+              title="배경색"
+              onClick={() => setIsBgColorMenuOpen(!isBgColorMenuOpen)}
+            >
+              <Icon name="paintBucket" className="w-4 h-4 text-gray-700" />
+              <span
+                className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full"
+                style={{
+                  backgroundColor: bgColor,
+                  opacity: bgOpacity / 100,
+                }}
+              ></span>
+            </button>
+            {isBgColorMenuOpen && (
+              <div
+                className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-3 min-w-[200px]"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <div className="mb-2">
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    배경색
+                  </label>
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => setBgColor(e.target.value)}
+                    className="w-full h-8 cursor-pointer"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    투명도: {bgOpacity}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={bgOpacity}
+                    onChange={(e) => setBgOpacity(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const rgba = `rgba(${parseInt(
+                        bgColor.slice(1, 3),
+                        16
+                      )}, ${parseInt(bgColor.slice(3, 5), 16)}, ${parseInt(
+                        bgColor.slice(5, 7),
+                        16
+                      )}, ${bgOpacity / 100})`;
+                      editor
+                        .chain()
+                        .focus()
+                        .toggleHighlight({ color: rgba })
+                        .run();
+                      setIsBgColorMenuOpen(false);
+                    }}
+                    className="flex-1 px-3 py-1.5 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                  >
+                    적용
+                  </button>
+                  <button
+                    onClick={() => {
+                      editor.chain().focus().unsetHighlight().run();
+                      setIsBgColorMenuOpen(false);
+                    }}
+                    className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+                  >
+                    제거
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="w-px h-5 bg-gray-200 mx-1"></div>
           <ToolbarButton
             onClick={openLinkEditor}
@@ -536,6 +813,299 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               </div>
             )}
           </div>
+
+          {/* Table Insertion */}
+          <div className="relative" ref={tableMenuRef}>
+            <button
+              className="p-1.5 rounded-sm hover:bg-gray-100"
+              title="테이블 삽입/편집"
+              onClick={() => setIsTableMenuOpen(!isTableMenuOpen)}
+            >
+              <Icon name="table" className="w-4 h-4 text-gray-700" />
+            </button>
+            {isTableMenuOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                {!editor.isActive("table") ? (
+                  // Table grid selector (when not in a table)
+                  <div className="p-4" style={{ width: "240px" }}>
+                    <div
+                      className="mb-2"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(10, 20px)",
+                        gap: "2px",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {Array.from({ length: 100 }).map((_, index) => {
+                        const row = Math.floor(index / 10) + 1;
+                        const col = (index % 10) + 1;
+                        const isHighlighted =
+                          row <= tableGridRows && col <= tableGridCols;
+
+                        return (
+                          <div
+                            key={index}
+                            style={{
+                              width: "20px",
+                              height: "20px",
+                              border: isHighlighted
+                                ? "1px solid #60a5fa"
+                                : "1px solid #d1d5db",
+                              backgroundColor: isHighlighted
+                                ? "#bfdbfe"
+                                : "#ffffff",
+                              cursor: "pointer",
+                              transition: "all 0.1s",
+                            }}
+                            className="hover:bg-gray-100"
+                            onMouseEnter={() => {
+                              setTableGridRows(row);
+                              setTableGridCols(col);
+                            }}
+                            onClick={() => {
+                              editor
+                                .chain()
+                                .focus()
+                                .insertTable({
+                                  rows: row,
+                                  cols: col,
+                                  withHeaderRow: true,
+                                })
+                                .run();
+                              setIsTableMenuOpen(false);
+                              setTableGridRows(0);
+                              setTableGridCols(0);
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="text-xs text-center text-gray-600 font-medium">
+                      {tableGridRows > 0 && tableGridCols > 0
+                        ? `${tableGridRows} × ${tableGridCols}`
+                        : "테이블 크기 선택"}
+                    </div>
+                  </div>
+                ) : (
+                  // Table editing toolbar (when cursor is inside a table)
+                  <div className="p-2 flex items-center gap-1">
+                    {/* 왼쪽에 열 추가 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().addColumnBefore().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="왼쪽에 열 삽입"
+                    >
+                      <Icon
+                        name="tableColumnBefore"
+                        className="w-5 h-5 text-gray-700"
+                      />
+                    </button>
+
+                    {/* 오른쪽에 열 추가 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().addColumnAfter().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="오른쪽에 열 삽입"
+                    >
+                      <Icon
+                        name="tableColumnAfter"
+                        className="w-5 h-5 text-gray-700"
+                      />
+                    </button>
+
+                    {/* 열 삭제 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().deleteColumn().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="열 삭제"
+                    >
+                      <Icon
+                        name="tableColumnDelete"
+                        className="w-5 h-5 text-red-600"
+                      />
+                    </button>
+
+                    <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+                    {/* 위에 행 추가 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().addRowBefore().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="위에 행 삽입"
+                    >
+                      <Icon
+                        name="tableRowBefore"
+                        className="w-5 h-5 text-gray-700"
+                      />
+                    </button>
+
+                    {/* 아래에 행 추가 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().addRowAfter().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="아래에 행 삽입"
+                    >
+                      <Icon
+                        name="tableRowAfter"
+                        className="w-5 h-5 text-gray-700"
+                      />
+                    </button>
+
+                    {/* 행 삭제 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().deleteRow().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="행 삭제"
+                    >
+                      <Icon
+                        name="tableRowDelete"
+                        className="w-5 h-5 text-red-600"
+                      />
+                    </button>
+
+                    <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+                    {/* 셀 합치기 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().mergeCells().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="셀 합치기"
+                    >
+                      <Icon
+                        name="tableMergeCells"
+                        className="w-5 h-5 text-gray-700"
+                      />
+                    </button>
+
+                    {/* 셀 나누기 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().splitCell().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="셀 나누기"
+                    >
+                      <Icon
+                        name="tableSplitCell"
+                        className="w-5 h-5 text-gray-700"
+                      />
+                    </button>
+
+                    <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+                    {/* 헤더 행 토글 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().toggleHeaderRow().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="헤더 행 토글"
+                    >
+                      <Icon
+                        name="tableTheme"
+                        className="w-5 h-5 text-gray-700"
+                      />
+                    </button>
+
+                    {/* 테이블 삭제 */}
+                    <button
+                      onClick={() => {
+                        editor.chain().focus().deleteTable().run();
+                        setIsTableMenuOpen(false);
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="테이블 삭제"
+                    >
+                      <Icon
+                        name="tableDelete"
+                        className="w-5 h-5 text-red-600"
+                      />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Horizontal Rule with Spacing */}
+          <div className="relative" ref={hrMenuRef}>
+            <button
+              className="p-1.5 rounded-sm hover:bg-gray-100"
+              title="구분선"
+              onClick={() => setIsHrMenuOpen(!isHrMenuOpen)}
+            >
+              <Icon name="minus" className="w-4 h-4 text-gray-700" />
+            </button>
+            {isHrMenuOpen && (
+              <div
+                className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-3 min-w-[180px]"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <div className="mb-3">
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    여백 크기: {hrSpacing}px
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="50"
+                    step="5"
+                    value={hrSpacing}
+                    onChange={(e) => setHrSpacing(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    // Insert HR with custom margin
+                    editor.chain().focus().setHorizontalRule().run();
+
+                    // Apply custom spacing via style (requires DOM manipulation after insert)
+                    setTimeout(() => {
+                      const hrs = editor.view.dom.querySelectorAll("hr");
+                      const lastHr = hrs[hrs.length - 1] as HTMLElement;
+                      if (lastHr) {
+                        lastHr.style.margin = `${hrSpacing}px 0`;
+                      }
+                    }, 0);
+
+                    setIsHrMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-1.5 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                >
+                  구분선 삽입
+                </button>
+              </div>
+            )}
+          </div>
+
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleSuperscript().run()}
             isActive={editor.isActive("superscript")}
@@ -549,45 +1119,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             title="아래 첨자"
           >
             <Icon name="subscript" className="w-4 h-4 text-gray-700" />
-          </ToolbarButton>
-          <div className="w-px h-5 bg-gray-200 mx-1"></div>
-          <ToolbarButton
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 1 }).run()
-            }
-            isActive={editor.isActive("heading", { level: 1 })}
-            title="헤더 1"
-          >
-            <span className="font-bold text-xs w-4 h-4 flex items-center justify-center">
-              H1
-            </span>
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 2 }).run()
-            }
-            isActive={editor.isActive("heading", { level: 2 })}
-            title="헤더 2"
-          >
-            <span className="font-bold text-xs w-4 h-4 flex items-center justify-center">
-              H2
-            </span>
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            isActive={editor.isActive("bulletList")}
-            title="글머리 기호 목록"
-          >
-            <Icon name="list" className="w-4 h-4 text-gray-700" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            isActive={editor.isActive("orderedList")}
-            title="번호 매기기 목록"
-          >
-            <span className="font-bold text-xs w-4 h-4 flex items-center justify-center">
-              1.
-            </span>
           </ToolbarButton>
           <div className="w-px h-5 bg-gray-200 mx-1"></div>
           {(["left", "center", "right", "justify"] as const).map((align) => (

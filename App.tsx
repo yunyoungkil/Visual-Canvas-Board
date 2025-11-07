@@ -32,6 +32,7 @@ import ItemAiToolbar from "./components/ItemAiToolbar";
 import EditorToolbar from "./components/EditorToolbar";
 import ImageToolbar from "./components/TextSelectionToolbar"; // Repurposed for image editing
 import GroupBox from "./components/GroupBox";
+import TableFloatingToolbar from "./components/TableFloatingToolbar";
 import * as C from "./constants";
 
 import { useCanvasState } from "./hooks/useCanvasState";
@@ -73,6 +74,7 @@ const App: React.FC = () => {
     setSuggestedGroupOverlayFloatingStates,
   ] = useState<SuggestedGroupOverlayState[]>([]);
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
+  const [showTableToolbar, setShowTableToolbar] = useState(false);
 
   const {
     isExporting,
@@ -207,7 +209,18 @@ const App: React.FC = () => {
   const handleStopEditing = useCallback(() => {
     setActiveEditor(null);
     setTiptapToolbarState(null);
+    setShowTableToolbar(false);
   }, []);
+
+  // Check if active editor is inside a table
+  useEffect(() => {
+    if (activeEditor && !activeEditor.isDestroyed) {
+      const isInTable = activeEditor.isActive("table");
+      setShowTableToolbar(isInTable);
+    } else {
+      setShowTableToolbar(false);
+    }
+  }, [activeEditor]);
 
   // Fix: When an edited item is deleted, clean up editor-related state.
   useEffect(() => {
@@ -978,6 +991,14 @@ const App: React.FC = () => {
         onClearApiKeyError={() => setApiKeyError(null)}
         className="z-50"
       />
+
+      {/* Table Floating Toolbar */}
+      {showTableToolbar && activeEditor && (
+        <TableFloatingToolbar
+          editor={activeEditor}
+          onClose={() => setShowTableToolbar(false)}
+        />
+      )}
     </div>
   );
 };

@@ -10,6 +10,14 @@ import Link from "@tiptap/extension-link";
 import Superscript from "@tiptap/extension-superscript";
 import Subscript from "@tiptap/extension-subscript";
 import BubbleMenuExtension from "@tiptap/extension-bubble-menu";
+import FontFamily from "@tiptap/extension-font-family";
+import TextStyle from "@tiptap/extension-text-style";
+import Highlight from "@tiptap/extension-highlight";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import { ResizableImage } from "../extensions/ResizableImage.tsx";
 
 import type {
@@ -103,18 +111,49 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
     const editor = useEditor(
       {
         extensions: [
-          StarterKit,
+          StarterKit.configure({
+            horizontalRule: false, // We'll use our own HorizontalRule extension
+          }),
           Underline,
           TextAlign.configure({ types: ["heading", "paragraph"] }),
           Placeholder.configure({ placeholder: "텍스트 입력..." }),
-          // The TextStyle extension is already included in StarterKit. Including it again causes a conflict.
+          TextStyle, // Required for FontFamily and other text styling
           Color,
+          FontFamily.configure({
+            types: ["textStyle"],
+          }),
+          Highlight.configure({
+            multicolor: true,
+          }),
           Link.configure({
             openOnClick: false,
             autolink: true,
           }),
           Superscript,
           Subscript,
+          Table.configure({
+            resizable: true,
+            HTMLAttributes: {
+              class: "border-collapse table-auto w-full",
+            },
+          }),
+          TableRow,
+          TableHeader.configure({
+            HTMLAttributes: {
+              class:
+                "border border-gray-300 bg-gray-100 px-3 py-2 font-semibold text-left",
+            },
+          }),
+          TableCell.configure({
+            HTMLAttributes: {
+              class: "border border-gray-300 px-3 py-2",
+            },
+          }),
+          HorizontalRule.configure({
+            HTMLAttributes: {
+              class: "my-4 border-t-2 border-gray-300",
+            },
+          }),
           ResizableImage,
           BubbleMenuExtension,
         ],
@@ -314,6 +353,8 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
     }
 
     const handleEditorContainerMouseDown = (e: React.MouseEvent) => {
+      // Only stop propagation when in editing mode
+      // This allows item selection and dragging when not editing
       if (isEditing) {
         e.stopPropagation();
       }
@@ -412,8 +453,10 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
                 {/* Removed justifyContent. Text alignment is now fully controlled by Tiptap. `flex` and `items-center` are for vertical centering. */}
                 <div
                   onMouseDown={handleEditorContainerMouseDown}
+                  onMouseMove={(e) => isEditing && e.stopPropagation()}
+                  onMouseUp={(e) => isEditing && e.stopPropagation()}
                   className="absolute inset-0 flex items-center p-2 break-words overflow-y-auto"
-                  style={{ pointerEvents: "auto" }}
+                  style={{ pointerEvents: isEditing ? "auto" : "none" }}
                 >
                   {editor && <EditorContent editor={editor} />}
                 </div>
@@ -424,7 +467,10 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
           {item.type === "text" && (
             <div
               onMouseDown={handleEditorContainerMouseDown}
+              onMouseMove={(e) => isEditing && e.stopPropagation()}
+              onMouseUp={(e) => isEditing && e.stopPropagation()}
               className="w-full h-full p-2 break-words overflow-y-auto"
+              style={{ pointerEvents: isEditing ? "auto" : "none" }}
             >
               {editor && <EditorContent editor={editor} />}
             </div>

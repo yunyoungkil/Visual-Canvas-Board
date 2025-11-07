@@ -1,53 +1,113 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>비주얼 캔버스 보드</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
-<style>
-    .ProseMirror {
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>비주얼 캔버스 보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+    <style>
+      .ProseMirror {
         height: 100%;
-    }
-    .ProseMirror:focus {
+      }
+      .ProseMirror:focus {
         outline: none;
-    }
-    .ProseMirror a {
-      color: #3b82f6; /* blue-500 */
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    .tiptap-toolbar button.is-active {
+      }
+      .ProseMirror a {
+        color: #3b82f6; /* blue-500 */
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .tiptap-toolbar button.is-active {
         background-color: #e0e7ff;
         color: #4f46e5;
-    }
-    .ProseMirror p.is-editor-empty:first-child::before {
-      content: attr(data-placeholder);
-      float: left;
-      color: #adb5bd;
-      pointer-events: none;
-      height: 0;
-    }
-    /* Styles for Tiptap content to override Tailwind's reset */
-    .ProseMirror h1 { font-size: 2em; font-weight: bold; }
-    .ProseMirror h2 { font-size: 1.5em; font-weight: bold; }
-    .ProseMirror ul { list-style-type: disc; padding-left: 2rem; }
-    .ProseMirror ol { list-style-type: decimal; padding-left: 2rem; }
-    .ProseMirror img {
+      }
+      .ProseMirror p.is-editor-empty:first-child::before {
+        content: attr(data-placeholder);
+        float: left;
+        color: #adb5bd;
+        pointer-events: none;
+        height: 0;
+      }
+      /* Styles for Tiptap content to override Tailwind's reset */
+      .ProseMirror h1 {
+        font-size: 2em;
+        font-weight: bold;
+      }
+      .ProseMirror h2 {
+        font-size: 1.5em;
+        font-weight: bold;
+      }
+      .ProseMirror ul {
+        list-style-type: disc;
+        padding-left: 2rem;
+      }
+      .ProseMirror ol {
+        list-style-type: decimal;
+        padding-left: 2rem;
+      }
+      .ProseMirror img {
         display: inline-block;
         max-width: 100%;
         height: auto;
         border-radius: 0.25rem;
-    }
-    .ProseMirror img.ProseMirror-selectednode {
+      }
+      .ProseMirror img.ProseMirror-selectednode {
         outline: 3px solid #60a5fa;
-    }
-</style>
-<link rel="stylesheet" href="/index.css">
-</head>
-<body class="bg-gray-100">
-  <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+      }
+      /* Table styles with resize handles */
+      .ProseMirror table {
+        border-collapse: collapse;
+        table-layout: fixed;
+        width: 100%;
+        margin: 1rem 0;
+        overflow: hidden;
+        position: relative;
+        pointer-events: auto;
+        cursor: text;
+      }
+      .ProseMirror td,
+      .ProseMirror th {
+        min-width: 1em;
+        border: 2px solid #d1d5db;
+        padding: 0.5rem 0.75rem;
+        vertical-align: top;
+        box-sizing: border-box;
+        position: relative;
+        pointer-events: auto;
+        cursor: text;
+      }
+      .ProseMirror th {
+        font-weight: bold;
+        text-align: left;
+        background-color: #f3f4f6;
+      }
+      .ProseMirror .selectedCell {
+        background-color: #dbeafe;
+      }
+      /* Column resize handle */
+      .ProseMirror .column-resize-handle {
+        position: absolute;
+        right: -2px;
+        top: 0;
+        bottom: -2px;
+        width: 4px;
+        background-color: #3b82f6;
+        pointer-events: none;
+        z-index: 20;
+      }
+      .ProseMirror.resize-cursor {
+        cursor: col-resize;
+      }
+      /* Table selected state */
+      .ProseMirror table.selectedTable {
+        outline: 2px solid #60a5fa;
+      }
+    </style>
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+  <body class="bg-gray-100">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

@@ -1,9 +1,67 @@
-
-
-import React from 'react';
+import React from "react";
 
 // Fix: Export the IconName type to be used in other components
-export type IconName = 'group' | 'ungroup' | 'link' | 'trash' | 'info' | 'zoomIn' | 'zoomOut' | 'settings' | 'close' | 'undo' | 'redo' | 'hand' | 'text' | 'square' | 'bold' | 'italic' | 'fileX' | 'export' | 'magnet' | 'ellipse' | 'diamond' | 'copy' | 'paste' | 'bringForward' | 'bringFront' | 'sendBackward' | 'sendBack' | 'sparkles' | 'lightbulb' | 'groupSparkles' | 'sparklesRefresh' | 'list' | 'messageSquare' | 'alignLeft' | 'alignCenter' | 'alignRight' | 'botMessageSquare' | 'chevronsUp' | 'chevronsDown' | 'underline' | 'strikethrough' | 'code' | 'alignJustify' | 'superscript' | 'subscript' | 'image';
+export type IconName =
+  | "group"
+  | "ungroup"
+  | "link"
+  | "trash"
+  | "info"
+  | "zoomIn"
+  | "zoomOut"
+  | "settings"
+  | "close"
+  | "undo"
+  | "redo"
+  | "hand"
+  | "text"
+  | "square"
+  | "bold"
+  | "italic"
+  | "fileX"
+  | "export"
+  | "magnet"
+  | "ellipse"
+  | "diamond"
+  | "copy"
+  | "paste"
+  | "bringForward"
+  | "bringFront"
+  | "sendBackward"
+  | "sendBack"
+  | "sparkles"
+  | "lightbulb"
+  | "groupSparkles"
+  | "sparklesRefresh"
+  | "list"
+  | "messageSquare"
+  | "alignLeft"
+  | "alignCenter"
+  | "alignRight"
+  | "botMessageSquare"
+  | "chevronsUp"
+  | "chevronsDown"
+  | "underline"
+  | "strikethrough"
+  | "code"
+  | "alignJustify"
+  | "superscript"
+  | "subscript"
+  | "image"
+  | "paintBucket"
+  | "table"
+  | "listOrdered"
+  | "minus"
+  | "tableTheme"
+  | "tableMergeCells"
+  | "tableSplitCell"
+  | "tableRowBefore"
+  | "tableRowAfter"
+  | "tableRowDelete"
+  | "tableColumnBefore"
+  | "tableColumnAfter"
+  | "tableColumnDelete"
+  | "tableDelete";
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -20,10 +78,38 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   ungroup: (
     <>
-      <rect x="3" y="3" width="7" height="7" rx="1" strokeDasharray="2 2"></rect>
-      <rect x="14" y="3" width="7" height="7" rx="1" strokeDasharray="2 2"></rect>
-      <rect x="3" y="14" width="7" height="7" rx="1" strokeDasharray="2 2"></rect>
-      <rect x="14" y="14" width="7" height="7" rx="1" strokeDasharray="2 2"></rect>
+      <rect
+        x="3"
+        y="3"
+        width="7"
+        height="7"
+        rx="1"
+        strokeDasharray="2 2"
+      ></rect>
+      <rect
+        x="14"
+        y="3"
+        width="7"
+        height="7"
+        rx="1"
+        strokeDasharray="2 2"
+      ></rect>
+      <rect
+        x="3"
+        y="14"
+        width="7"
+        height="7"
+        rx="1"
+        strokeDasharray="2 2"
+      ></rect>
+      <rect
+        x="14"
+        y="14"
+        width="7"
+        height="7"
+        rx="1"
+        strokeDasharray="2 2"
+      ></rect>
     </>
   ),
   link: (
@@ -64,14 +150,14 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   settings: (
     <>
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
     </>
   ),
   close: (
     <>
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
     </>
   ),
   undo: (
@@ -103,7 +189,7 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   square: (
     <>
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
     </>
   ),
   bold: (
@@ -151,48 +237,48 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   copy: (
     <>
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
     </>
   ),
   paste: (
     <>
-        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
     </>
   ),
   bringForward: (
     <>
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-        <polyline points="12 5 12 11 15 8"></polyline>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      <polyline points="12 5 12 11 15 8"></polyline>
     </>
   ),
   bringFront: (
     <>
-        <rect x="8" y="8" width="12" height="12" rx="2" ry="2"></rect>
-        <path d="M4 16.5V6a2 2 0 0 1 2-2h11"></path>
+      <rect x="8" y="8" width="12" height="12" rx="2" ry="2"></rect>
+      <path d="M4 16.5V6a2 2 0 0 1 2-2h11"></path>
     </>
   ),
   sendBackward: (
     <>
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-        <polyline points="12 11 12 5 9 8"></polyline>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      <polyline points="12 11 12 5 9 8"></polyline>
     </>
   ),
   sendBack: (
     <>
-        <rect x="4" y="4" width="12" height="12" rx="2" ry="2"></rect>
-        <path d="M8 20V10a2 2 0 0 1 2-2h11"></path>
+      <rect x="4" y="4" width="12" height="12" rx="2" ry="2"></rect>
+      <path d="M8 20V10a2 2 0 0 1 2-2h11"></path>
     </>
   ),
   sparkles: (
-      <>
-        <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
-        <path d="M5 5L6 8L9 9L6 10L5 13L4 10L1 9L4 8L5 5Z" />
-        <path d="M19 5L18 8L15 9L18 10L19 13L20 10L23 9L20 8L19 5Z" />
-      </>
+    <>
+      <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+      <path d="M5 5L6 8L9 9L6 10L5 13L4 10L1 9L4 8L5 5Z" />
+      <path d="M19 5L18 8L15 9L18 10L19 13L20 10L23 9L20 8L19 5Z" />
+    </>
   ),
   lightbulb: (
     <>
@@ -212,11 +298,11 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   sparklesRefresh: (
     <>
-        <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z"/>
-        <path d="M23 4H18V9"/>
-        <path d="M1 6C6 10 7 10 12 15"/>
-        <path d="M1 20H6V15"/>
-        <path d="M23 20C18 11 17 11 12 6"/>
+      <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" />
+      <path d="M23 4H18V9" />
+      <path d="M1 6C6 10 7 10 12 15" />
+      <path d="M1 20H6V15" />
+      <path d="M23 20C18 11 17 11 12 6" />
     </>
   ),
   list: (
@@ -268,8 +354,8 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   botMessageSquare: (
     <>
-      <path d="M12 6V2H8"/>
-      <path d="m8 18-4 4V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2z"/>
+      <path d="M12 6V2H8" />
+      <path d="m8 18-4 4V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2z" />
     </>
   ),
   chevronsUp: (
@@ -297,35 +383,156 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   code: (
     <>
-        <polyline points="16 18 22 12 16 6"></polyline>
-        <polyline points="8 6 2 12 8 18"></polyline>
+      <polyline points="16 18 22 12 16 6"></polyline>
+      <polyline points="8 6 2 12 8 18"></polyline>
     </>
   ),
   superscript: (
-      <>
-        <path d="m4 5 4-3 4 3"/>
-        <path d="m14 15 4 3 4-3"/>
-        <path d="M6 14h2"/>
-        <path d="M16 14h2"/>
-        <path d="M8 5v9"/>
-        <path d="M18 12v6"/>
-      </>
+    <>
+      <path d="m4 5 4-3 4 3" />
+      <path d="m14 15 4 3 4-3" />
+      <path d="M6 14h2" />
+      <path d="M16 14h2" />
+      <path d="M8 5v9" />
+      <path d="M18 12v6" />
+    </>
   ),
   subscript: (
-      <>
-        <path d="m4 19 4 3 4-3"/>
-        <path d="m14 9 4-3 4 3"/>
-        <path d="M6 8h2"/>
-        <path d="M16 8h2"/>
-        <path d="M8 19V10"/>
-        <path d="M18 6v9"/>
-      </>
+    <>
+      <path d="m4 19 4 3 4-3" />
+      <path d="m14 9 4-3 4 3" />
+      <path d="M6 8h2" />
+      <path d="M16 8h2" />
+      <path d="M8 19V10" />
+      <path d="M18 6v9" />
+    </>
   ),
   image: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
       <circle cx="9" cy="9" r="2"></circle>
       <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+    </>
+  ),
+  paintBucket: (
+    <>
+      <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"></path>
+      <path d="m5 2 5 5"></path>
+      <path d="M2 13h15"></path>
+      <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"></path>
+    </>
+  ),
+  table: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M3 9h18"></path>
+      <path d="M3 15h18"></path>
+      <path d="M9 3v18"></path>
+      <path d="M15 3v18"></path>
+    </>
+  ),
+  listOrdered: (
+    <>
+      <line x1="10" y1="6" x2="21" y2="6"></line>
+      <line x1="10" y1="12" x2="21" y2="12"></line>
+      <line x1="10" y1="18" x2="21" y2="18"></line>
+      <path d="M4 6h1v4"></path>
+      <path d="M4 10h2"></path>
+      <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
+    </>
+  ),
+  minus: (
+    <>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </>
+  ),
+  tableTheme: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M3 9h18"></path>
+      <path d="M9 3v18"></path>
+      <circle cx="15" cy="15" r="2" fill="currentColor"></circle>
+    </>
+  ),
+  tableMergeCells: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M12 8v8"></path>
+      <path d="M8 12h8"></path>
+      <path d="M10 10l-2 2 2 2"></path>
+      <path d="M14 10l2 2-2 2"></path>
+    </>
+  ),
+  tableSplitCell: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M12 8v8"></path>
+      <path d="M8 12h8"></path>
+      <path d="M10 14l2-2-2-2"></path>
+      <path d="M14 14l-2-2 2-2"></path>
+    </>
+  ),
+  tableRowBefore: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M3 9h18"></path>
+      <path d="M3 15h18"></path>
+      <path d="M12 6V3"></path>
+      <path d="M9 6l3-3 3 3"></path>
+    </>
+  ),
+  tableRowAfter: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M3 9h18"></path>
+      <path d="M3 15h18"></path>
+      <path d="M12 18v3"></path>
+      <path d="M9 18l3 3 3-3"></path>
+    </>
+  ),
+  tableRowDelete: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M3 9h18"></path>
+      <path d="M3 15h18"></path>
+      <path d="M8 12h8" stroke="red" strokeWidth="2"></path>
+    </>
+  ),
+  tableColumnBefore: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M9 3v18"></path>
+      <path d="M15 3v18"></path>
+      <path d="M6 12H3"></path>
+      <path d="M6 9l-3 3 3 3"></path>
+    </>
+  ),
+  tableColumnAfter: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M9 3v18"></path>
+      <path d="M15 3v18"></path>
+      <path d="M18 12h3"></path>
+      <path d="M18 9l3 3-3 3"></path>
+    </>
+  ),
+  tableColumnDelete: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M9 3v18"></path>
+      <path d="M15 3v18"></path>
+      <path d="M12 8v8" stroke="red" strokeWidth="2"></path>
+    </>
+  ),
+  tableDelete: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <path d="M3 9h18"></path>
+      <path d="M3 15h18"></path>
+      <path d="M9 3v18"></path>
+      <path d="M15 3v18"></path>
+      <line x1="6" y1="6" x2="18" y2="18" stroke="red" strokeWidth="2"></line>
+      <line x1="18" y1="6" x2="6" y2="18" stroke="red" strokeWidth="2"></line>
     </>
   ),
 };
