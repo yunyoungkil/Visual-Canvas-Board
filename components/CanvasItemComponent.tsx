@@ -236,6 +236,9 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
       if (!editor) return;
       if (isEditing && !editor.isEditable) {
         editor.setEditable(true);
+        // Add editing-mode class for CSS control
+        const editorElement = editor.view.dom;
+        editorElement.classList.add("editing-mode");
         // Use queueMicrotask to avoid flushSync warning
         queueMicrotask(() => {
           editor.commands.focus("end");
@@ -248,6 +251,9 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
         }
       } else if (!isEditing && editor.isEditable) {
         editor.setEditable(false);
+        // Remove editing-mode class
+        const editorElement = editor.view.dom;
+        editorElement.classList.remove("editing-mode");
         onStopEditing();
       }
     }, [isEditing, editor, onStartEditing, onStopEditing]);
@@ -353,11 +359,22 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
     }
 
     const handleEditorContainerMouseDown = (e: React.MouseEvent) => {
-      // Only stop propagation when in editing mode
-      // This allows item selection and dragging when not editing
+      // Check if the click is on a table element
+      const target = e.target as HTMLElement;
+      const isTableElement = target.closest("table") !== null;
+
       if (isEditing) {
+        // In editing mode, always stop propagation to allow text editing
+        // BUT: don't stop for table elements - let Tiptap handle table interactions
+        if (!isTableElement) {
+          e.stopPropagation();
+        }
+      } else if (isTableElement) {
+        // Not in editing mode but clicked on table - stop propagation
+        // This prevents dragging when clicking on table in non-editing mode
         e.stopPropagation();
       }
+      // If not editing and not on table, allow propagation for item dragging
     };
 
     return (
@@ -456,7 +473,6 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
                   onMouseMove={(e) => isEditing && e.stopPropagation()}
                   onMouseUp={(e) => isEditing && e.stopPropagation()}
                   className="absolute inset-0 flex items-center p-2 break-words overflow-y-auto"
-                  style={{ pointerEvents: isEditing ? "auto" : "none" }}
                 >
                   {editor && <EditorContent editor={editor} />}
                 </div>
@@ -470,7 +486,6 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
               onMouseMove={(e) => isEditing && e.stopPropagation()}
               onMouseUp={(e) => isEditing && e.stopPropagation()}
               className="w-full h-full p-2 break-words overflow-y-auto"
-              style={{ pointerEvents: isEditing ? "auto" : "none" }}
             >
               {editor && <EditorContent editor={editor} />}
             </div>

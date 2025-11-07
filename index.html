@@ -63,8 +63,8 @@
         margin: 1rem 0;
         overflow: hidden;
         position: relative;
-        pointer-events: auto;
-        cursor: text;
+        user-select: none;
+        pointer-events: none;
       }
       .ProseMirror td,
       .ProseMirror th {
@@ -74,8 +74,8 @@
         vertical-align: top;
         box-sizing: border-box;
         position: relative;
-        pointer-events: auto;
-        cursor: text;
+        user-select: none;
+        pointer-events: none;
       }
       .ProseMirror th {
         font-weight: bold;
@@ -102,6 +102,13 @@
       /* Table selected state */
       .ProseMirror table.selectedTable {
         outline: 2px solid #60a5fa;
+      }
+      /* Editing mode: enable text selection and interaction */
+      .ProseMirror.editing-mode table,
+      .ProseMirror.editing-mode td,
+      .ProseMirror.editing-mode th {
+        user-select: text;
+        pointer-events: auto;
       }
     </style>
     <link rel="stylesheet" href="/index.css" />
