@@ -32,7 +32,6 @@ import ItemAiToolbar from "./components/ItemAiToolbar";
 import EditorToolbar from "./components/EditorToolbar";
 import ImageToolbar from "./components/TextSelectionToolbar"; // Repurposed for image editing
 import GroupBox from "./components/GroupBox";
-import TableFloatingToolbar from "./components/TableFloatingToolbar";
 import * as C from "./constants";
 
 import { useCanvasState } from "./hooks/useCanvasState";
@@ -59,6 +58,10 @@ const App: React.FC = () => {
 
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isDetailsPanelVisible, setIsDetailsPanelVisible] = useState(false);
+  const [doubleClickPosition, setDoubleClickPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const [itemAiToolbarFloatingState, setItemAiToolbarFloatingState] =
     useState<ItemAiToolbarState | null>(null);
@@ -74,7 +77,6 @@ const App: React.FC = () => {
     setSuggestedGroupOverlayFloatingStates,
   ] = useState<SuggestedGroupOverlayState[]>([]);
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
-  const [showTableToolbar, setShowTableToolbar] = useState(false);
 
   const {
     isExporting,
@@ -207,20 +209,14 @@ const App: React.FC = () => {
   }, [detailsPanelEntity]);
 
   const handleStopEditing = useCallback(() => {
+    // Phase 1: 편집 종료 시 편집했던 아이템을 선택 상태로 복귀
+    if (editingItemId) {
+      setSelectedItemIds([editingItemId]);
+    }
     setActiveEditor(null);
     setTiptapToolbarState(null);
-    setShowTableToolbar(false);
-  }, []);
-
-  // Check if active editor is inside a table
-  useEffect(() => {
-    if (activeEditor && !activeEditor.isDestroyed) {
-      const isInTable = activeEditor.isActive("table");
-      setShowTableToolbar(isInTable);
-    } else {
-      setShowTableToolbar(false);
-    }
-  }, [activeEditor]);
+    setDoubleClickPosition(null); // 더블 클릭 위치 초기화
+  }, [editingItemId, setSelectedItemIds]);
 
   // Fix: When an edited item is deleted, clean up editor-related state.
   useEffect(() => {
@@ -317,10 +313,16 @@ const App: React.FC = () => {
   const handleStartEditing = useCallback(
     (editor: Editor, itemRect: DOMRect) => {
       setActiveEditor(editor);
+      // 툴바 높이 (대략 60px) + 여유 공간 (10px) = 70px
+      // 툴바가 에디터 위쪽에 배치되도록 하고, 화면 상단을 넘지 않도록 제한
+      const toolbarHeight = 70;
+      const minTopPosition = 10; // 화면 상단에서 최소 10px 여유
+      const toolbarTop = Math.max(minTopPosition, itemRect.top - toolbarHeight);
+
       setTiptapToolbarState({
         isVisible: true,
         editor: editor,
-        top: itemRect.top,
+        top: toolbarTop,
         left: itemRect.left + itemRect.width / 2,
       });
       setItemAiToolbarFloatingState(null);
@@ -349,7 +351,13 @@ const App: React.FC = () => {
   }, [tiptapToolbarState]);
 
   const handleItemDoubleClick = useCallback(
-    (item: CanvasItem, itemRect: DOMRect) => {
+    (item: CanvasItem, itemRect: DOMRect, clickEvent?: React.MouseEvent) => {
+      if (clickEvent) {
+        setDoubleClickPosition({
+          x: clickEvent.clientX,
+          y: clickEvent.clientY,
+        });
+      }
       handleItemDoubleClickInternal(item);
     },
     [handleItemDoubleClickInternal]
@@ -634,13 +642,16 @@ const App: React.FC = () => {
               isGeneratingAIContentFor === item.id
             }
             scale={scale}
+            doubleClickPosition={
+              editingItemId === item.id ? doubleClickPosition : null
+            }
             onMouseDown={(e, itemId) => handleItemMouseDown(e, itemId)}
             onMouseUp={(e) => {
               e.stopPropagation();
               handleMouseUp(e, item.id);
             }}
-            onDoubleClick={(item, itemRect) =>
-              handleItemDoubleClick(item, itemRect)
+            onDoubleClick={(item, itemRect, clickEvent) =>
+              handleItemDoubleClick(item, itemRect, clickEvent)
             }
             onResizeMouseDown={handleResizeMouseDown}
             onConnectionStart={onConnectionStart}
@@ -991,14 +1002,6 @@ const App: React.FC = () => {
         onClearApiKeyError={() => setApiKeyError(null)}
         className="z-50"
       />
-
-      {/* Table Floating Toolbar */}
-      {showTableToolbar && activeEditor && (
-        <TableFloatingToolbar
-          editor={activeEditor}
-          onClose={() => setShowTableToolbar(false)}
-        />
-      )}
     </div>
   );
 };

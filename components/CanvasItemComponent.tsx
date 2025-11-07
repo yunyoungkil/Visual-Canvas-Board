@@ -17,8 +17,8 @@ import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
-import HorizontalRule from "@tiptap/extension-horizontal-rule";
-import { ResizableImage } from "../extensions/ResizableImage.tsx";
+import { SelectableHorizontalRule } from "../extensions/SelectableHorizontalRule";
+import { ResizableImage } from "../extensions/ResizableImage";
 
 import type {
   CanvasItem,
@@ -38,9 +38,14 @@ interface CanvasItemComponentProps {
   isHoveredForConnection: boolean;
   isGeneratingAIContentForThisItem: boolean;
   scale: number;
+  doubleClickPosition?: { x: number; y: number } | null;
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
   onMouseUp: (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
-  onDoubleClick: (item: CanvasItem, itemRect: DOMRect) => void;
+  onDoubleClick: (
+    item: CanvasItem,
+    itemRect: DOMRect,
+    clickEvent?: React.MouseEvent
+  ) => void;
   onResizeMouseDown: (e: React.MouseEvent, itemId: string) => void;
   onConnectionStart: (
     e: React.MouseEvent,
@@ -91,6 +96,7 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
     isHoveredForConnection,
     isGeneratingAIContentForThisItem,
     scale,
+    doubleClickPosition,
     onMouseDown,
     onMouseUp,
     onDoubleClick,
@@ -149,7 +155,7 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
               class: "border border-gray-300 px-3 py-2",
             },
           }),
-          HorizontalRule.configure({
+          SelectableHorizontalRule.configure({
             HTMLAttributes: {
               class: "my-4 border-t-2 border-gray-300",
             },
@@ -241,7 +247,26 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
         editorElement.classList.add("editing-mode");
         // Use queueMicrotask to avoid flushSync warning
         queueMicrotask(() => {
-          editor.commands.focus("end");
+          if (doubleClickPosition && itemContentRef.current) {
+            // 더블 클릭 위치로 커서 이동
+            const rect = itemContentRef.current.getBoundingClientRect();
+            const relativeX = doubleClickPosition.x - rect.left;
+            const relativeY = doubleClickPosition.y - rect.top;
+
+            // Tiptap의 posAtCoords를 사용하여 클릭 위치의 문서 위치 계산
+            const pos = editor.view.posAtCoords({
+              left: doubleClickPosition.x,
+              top: doubleClickPosition.y,
+            });
+
+            if (pos) {
+              editor.chain().focus().setTextSelection(pos.pos).run();
+            } else {
+              editor.commands.focus("end");
+            }
+          } else {
+            editor.commands.focus("end");
+          }
         });
         if (itemContentRef.current) {
           onStartEditing(
@@ -256,7 +281,7 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
         editorElement.classList.remove("editing-mode");
         onStopEditing();
       }
-    }, [isEditing, editor, onStartEditing, onStopEditing]);
+    }, [isEditing, editor, onStartEditing, onStopEditing, doubleClickPosition]);
 
     const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
       // Always prevent zoom in text editor areas
@@ -393,9 +418,9 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
           e.stopPropagation();
           onMouseUp(e, item.id);
         }}
-        onDoubleClick={() =>
+        onDoubleClick={(e) =>
           itemContentRef.current &&
-          onDoubleClick(item, itemContentRef.current.getBoundingClientRect())
+          onDoubleClick(item, itemContentRef.current.getBoundingClientRect(), e)
         }
       >
         {isGeneratingAIContentForThisItem && (

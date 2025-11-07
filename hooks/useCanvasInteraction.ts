@@ -276,13 +276,20 @@ export const useCanvasInteraction = ({
         return;
       }
 
+      // Phase 1: 편집 모드 중에는 다른 아이템과의 상호작용 차단
+      if (editingItemId && editingItemId !== id) {
+        setEditingItemId(null);
+        return; // 다른 아이템 클릭 시 드래그 시작 방지
+      }
+
+      // 현재 편집 중인 아이템 클릭 시에도 드래그 방지
+      if (editingItemId === id) {
+        return;
+      }
+
       e.stopPropagation();
       clickStartPos.current = { x: e.clientX, y: e.clientY };
       window.getSelection()?.empty();
-
-      if (editingItemId && editingItemId !== id) {
-        setEditingItemId(null);
-      }
 
       const clickedItem = items.find((item) => item.id === id);
       if (!clickedItem) return;
@@ -378,11 +385,17 @@ export const useCanvasInteraction = ({
     ]
   );
 
-  const handleItemDoubleClick = useCallback((item: CanvasItem) => {
-    if (item.type === "text" || item.type === "shape") {
-      setEditingItemId(item.id);
-    }
-  }, []);
+  const handleItemDoubleClick = useCallback(
+    (item: CanvasItem) => {
+      if (item.type === "text" || item.type === "shape") {
+        // Phase 1: 편집 모드 진입 시 캔버스 선택 포커스 완전 제거
+        // 이를 통해 편집 모드와 캔버스 상호작용의 포커스 충돌 해결
+        setSelectedItemIds([]);
+        setEditingItemId(item.id);
+      }
+    },
+    [setSelectedItemIds]
+  );
 
   const handleCanvasMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

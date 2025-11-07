@@ -55,6 +55,33 @@
       .ProseMirror img.ProseMirror-selectednode {
         outline: 3px solid #60a5fa;
       }
+      /* Horizontal rule styles */
+      .ProseMirror hr {
+        margin: 50px 0;
+        border: none;
+        border-top: 2px solid #d1d5db;
+        cursor: default;
+        position: relative;
+        padding: 8px 0;
+        pointer-events: none; /* 기본적으로 상호작용 비활성화 */
+        user-select: none;
+      }
+      /* 편집 모드에서만 상호작용 활성화 */
+      .ProseMirror.editing-mode hr {
+        cursor: pointer;
+        pointer-events: auto;
+        user-select: auto;
+      }
+      .ProseMirror.editing-mode hr:hover {
+        border-top-color: #9ca3af;
+        border-top-width: 3px;
+      }
+      .ProseMirror.editing-mode hr.ProseMirror-selectednode {
+        border-top-color: #60a5fa;
+        border-top-width: 4px;
+        outline: 2px solid #bfdbfe;
+        outline-offset: 4px;
+      }
       /* Table styles with resize handles */
       .ProseMirror table {
         border-collapse: collapse;
@@ -109,6 +136,17 @@
       .ProseMirror.editing-mode th {
         user-select: text;
         pointer-events: auto;
+      }
+      /* Non-editing mode: disable all interactions */
+      .ProseMirror:not(.editing-mode) {
+        user-select: none;
+      }
+      .ProseMirror:not(.editing-mode) img {
+        pointer-events: none;
+        user-select: none;
+      }
+      .ProseMirror:not(.editing-mode) .resize-handle {
+        display: none;
       }
     </style>
     <link rel="stylesheet" href="/index.css" />

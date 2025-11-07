@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
 
@@ -31,7 +32,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [isHrMenuOpen, setIsHrMenuOpen] = useState(false);
   const [bgColor, setBgColor] = useState("#ffff00");
   const [bgOpacity, setBgOpacity] = useState(50);
-  const [hrSpacing, setHrSpacing] = useState(10);
+  const [hrSpacing, setHrSpacing] = useState(50);
   const imageMenuRef = React.useRef<HTMLDivElement>(null);
   const headingMenuRef = React.useRef<HTMLDivElement>(null);
   const listMenuRef = React.useRef<HTMLDivElement>(null);
@@ -295,9 +296,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     <div
       className="fixed flex flex-wrap items-center gap-1 p-1 bg-white rounded-md shadow-lg border border-gray-200 tiptap-toolbar"
       style={{
-        top: `${top - 40}px`,
+        top: `${top}px`,
         left: `${left}px`,
         transform: "translateX(-50%)",
+        zIndex: 1000,
         ...style,
       }}
       onMouseDown={handleMouseDown}
@@ -1078,9 +1080,51 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                     max="50"
                     step="5"
                     value={hrSpacing}
-                    onChange={(e) => setHrSpacing(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newSpacing = Number(e.target.value);
+                      setHrSpacing(newSpacing);
+
+                      // 현재 선택된 구분선이 있으면 즉시 여백 업데이트
+                      const { selection } = editor.state;
+
+                      // Node selection으로 HR이 선택되어 있는지 확인
+                      if (
+                        selection instanceof NodeSelection &&
+                        selection.node.type.name === "horizontalRule"
+                      ) {
+                        // 선택된 노드의 정확한 위치
+                        const selectedPos = selection.from;
+
+                        // 문서의 모든 HR 요소를 순회하며 해당 위치의 HR 찾기
+                        let targetHrIndex = -1;
+                        let currentHrIndex = 0;
+
+                        editor.state.doc.descendants((node, nodePos) => {
+                          if (node.type.name === "horizontalRule") {
+                            if (nodePos === selectedPos) {
+                              targetHrIndex = currentHrIndex;
+                              return false; // 찾았으니 중단
+                            }
+                            currentHrIndex++;
+                          }
+                        });
+
+                        // DOM에서 해당 인덱스의 HR 요소에 스타일 적용
+                        if (targetHrIndex >= 0) {
+                          const hrs = editor.view.dom.querySelectorAll("hr");
+                          if (hrs[targetHrIndex]) {
+                            (
+                              hrs[targetHrIndex] as HTMLElement
+                            ).style.margin = `${newSpacing}px 0`;
+                          }
+                        }
+                      }
+                    }}
                     className="w-full"
                   />
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 구분선을 클릭하면 선택되어 여백을 조정할 수 있습니다
+                  </p>
                 </div>
                 <button
                   onClick={() => {
@@ -1093,8 +1137,43 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                       const lastHr = hrs[hrs.length - 1] as HTMLElement;
                       if (lastHr) {
                         lastHr.style.margin = `${hrSpacing}px 0`;
+
+                        // 삽입 후 자동 선택을 위해 위치 찾기
+                        setTimeout(() => {
+                          const allHrs = Array.from(
+                            editor.view.dom.querySelectorAll("hr")
+                          );
+                          const hrIndex = allHrs.indexOf(
+                            lastHr as HTMLHRElement
+                          );
+
+                          // HR의 문서 위치 찾기
+                          let targetPos = -1;
+                          let currentIndex = 0;
+
+                          editor.state.doc.descendants((node, pos) => {
+                            if (node.type.name === "horizontalRule") {
+                              if (currentIndex === hrIndex) {
+                                targetPos = pos;
+                                return false;
+                              }
+                              currentIndex++;
+                            }
+                          });
+
+                          // HR을 선택
+                          if (targetPos >= 0) {
+                            const sel = NodeSelection.create(
+                              editor.state.doc,
+                              targetPos
+                            );
+                            editor.view.dispatch(
+                              editor.state.tr.setSelection(sel)
+                            );
+                          }
+                        }, 10);
                       }
-                    }, 0);
+                    }, 10);
 
                     setIsHrMenuOpen(false);
                   }}

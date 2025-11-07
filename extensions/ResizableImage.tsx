@@ -29,6 +29,13 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
 
   const handleImageClick = useCallback(
     (e: React.MouseEvent) => {
+      // Only allow selection in editing mode
+      if (!editor.isEditable) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
       if (resizingRef.current) return;
 
       e.preventDefault();
@@ -42,11 +49,16 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
         editor.chain().focus().setNodeSelection(pos).run();
 
         // Update toolbar position to image top center
+        // 툴바가 이미지 위쪽에 배치되도록 하고, 화면 상단을 넘지 않도록 제한
         if (img) {
           const rect = img.getBoundingClientRect();
+          const toolbarHeight = 70; // 툴바 높이 + 여유 공간
+          const minTopPosition = 10; // 화면 상단에서 최소 10px 여유
+          const toolbarTop = Math.max(minTopPosition, rect.top - toolbarHeight);
+
           const customEvent = new CustomEvent("imageSelected", {
             detail: {
-              top: rect.top,
+              top: toolbarTop,
               left: rect.left + rect.width / 2,
               width: rect.width,
               height: rect.height,
@@ -238,10 +250,11 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
           }}
         />
 
-        {selected && !isResizing && (
+        {/* Only show resize handles when editor is editable (editing mode) */}
+        {selected && !isResizing && editor.isEditable && (
           <>
             <div
-              className="absolute top-0 left-0 w-2 h-full cursor-ew-resize hover:bg-blue-500 hover:opacity-50 z-10"
+              className="absolute top-0 left-0 w-2 h-full cursor-ew-resize hover:bg-blue-500 hover:opacity-50 z-10 resize-handle"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 handleResizeStart(e, "w");
@@ -250,7 +263,7 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
             />
 
             <div
-              className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-blue-500 hover:opacity-50 z-10"
+              className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-blue-500 hover:opacity-50 z-10 resize-handle"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 handleResizeStart(e, "e");
@@ -259,7 +272,7 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
             />
 
             <div
-              className="absolute top-0 left-0 w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize z-20"
+              className="absolute top-0 left-0 w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize z-20 resize-handle"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 handleResizeStart(e, "nw");
@@ -267,7 +280,7 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
               style={{ transform: "translate(-50%, -50%)" }}
             />
             <div
-              className="absolute top-0 right-0 w-3 h-3 bg-blue-500 rounded-full cursor-nesw-resize z-20"
+              className="absolute top-0 right-0 w-3 h-3 bg-blue-500 rounded-full cursor-nesw-resize z-20 resize-handle"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 handleResizeStart(e, "ne");
@@ -275,7 +288,7 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
               style={{ transform: "translate(50%, -50%)" }}
             />
             <div
-              className="absolute bottom-0 left-0 w-3 h-3 bg-blue-500 rounded-full cursor-nesw-resize z-20"
+              className="absolute bottom-0 left-0 w-3 h-3 bg-blue-500 rounded-full cursor-nesw-resize z-20 resize-handle"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 handleResizeStart(e, "sw");
@@ -283,7 +296,7 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
               style={{ transform: "translate(-50%, 50%)" }}
             />
             <div
-              className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize z-20"
+              className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize z-20 resize-handle"
               onMouseDown={(e) => {
                 e.stopPropagation();
                 handleResizeStart(e, "se");
