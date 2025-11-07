@@ -1,12 +1,20 @@
 import React from "react";
-import type { CanvasItem } from "../types";
+import type { CanvasItem, Point, HandlePosition } from "../types";
 
 interface GroupBoxProps {
   groupId: string;
   items: CanvasItem[];
   color: string;
   label: string;
+  scale: number;
   onUpdateLabel?: (groupId: string, label: string) => void;
+  onConnectionStart?: (
+    e: React.MouseEvent,
+    id: string,
+    fromHandle: HandlePosition,
+    fromPos: Point
+  ) => void;
+  getHandlePosition?: (item: { x: number; y: number; width: number; height: number }, position: HandlePosition) => Point;
 }
 
 const GroupBox: React.FC<GroupBoxProps> = ({
@@ -14,7 +22,10 @@ const GroupBox: React.FC<GroupBoxProps> = ({
   items,
   color,
   label,
+  scale,
   onUpdateLabel,
+  onConnectionStart,
+  getHandlePosition,
 }) => {
   const groupItems = items.filter((item) => item.groupId === groupId);
 
@@ -63,6 +74,48 @@ const GroupBox: React.FC<GroupBoxProps> = ({
           backgroundColor: `${color}20`, // 20% opacity
         }}
       />
+
+      {/* Connection handles */}
+      {onConnectionStart && getHandlePosition && (
+        <>
+          {(["top", "bottom", "left", "right"] as const).map((pos) => {
+            const groupBounds = {
+              x: groupX,
+              y: groupY,
+              width: groupWidth,
+              height: groupHeight,
+            };
+            const handlePos = getHandlePosition(groupBounds, pos);
+            const handleSize = 12 / scale;
+            const clickableAreaSize = 24 / scale;
+
+            return (
+              <div
+                key={`${pos}-clickable`}
+                className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair pointer-events-auto group z-50"
+                style={{
+                  left: handlePos.x - groupX,
+                  top: handlePos.y - groupY,
+                  width: `${clickableAreaSize}px`,
+                  height: `${clickableAreaSize}px`,
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  onConnectionStart(e, `group-${groupId}`, pos, handlePos);
+                }}
+              >
+                <div
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-green-500 border-2 border-white rounded-full transition-transform group-hover:scale-125"
+                  style={{
+                    width: `${handleSize}px`,
+                    height: `${handleSize}px`,
+                  }}
+                />
+              </div>
+            );
+          })}
+        </>
+      )}
 
       {/* Group header - editable, pointer-events enabled */}
       <div

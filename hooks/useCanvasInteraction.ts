@@ -135,7 +135,7 @@ export const useCanvasInteraction = ({
   );
 
   const getHandlePosition = useCallback(
-    (item: CanvasItem, position: HandlePosition): Point => {
+    (item: CanvasItem | { x: number; y: number; width: number; height: number }, position: HandlePosition): Point => {
       switch (position) {
         case "top":
           return { x: item.x + item.width / 2, y: item.y };
@@ -296,9 +296,12 @@ export const useCanvasInteraction = ({
 
       let newSelectionIds: string[];
 
-      // Only select entire group if Ctrl/Cmd key is pressed, otherwise select individual item
+      // Ctrl/Cmd + Shift: Select entire group (toggle)
+      // Ctrl/Cmd: Multi-select individual items (toggle)
+      // No modifier: Single selection
+      const isCtrlPressed = e.ctrlKey || e.metaKey;
       const shouldSelectWholeGroup =
-        (e.ctrlKey || e.metaKey) && clickedItem.groupId;
+        isCtrlPressed && e.shiftKey && clickedItem.groupId;
       const interactionUnitIds = shouldSelectWholeGroup
         ? items
             .filter((i) => i.groupId === clickedItem.groupId)
@@ -309,7 +312,8 @@ export const useCanvasInteraction = ({
         selectedItemIds.includes(uid)
       );
 
-      if (e.shiftKey) {
+      if (isCtrlPressed) {
+        // Ctrl/Cmd+Click: Toggle selection (add/remove)
         if (isUnitSelected) {
           newSelectionIds = selectedItemIds.filter(
             (sid) => !interactionUnitIds.includes(sid)
@@ -320,6 +324,7 @@ export const useCanvasInteraction = ({
           ];
         }
       } else {
+        // Normal click: Single selection
         if (!isUnitSelected) {
           newSelectionIds = interactionUnitIds;
         } else {
@@ -332,9 +337,9 @@ export const useCanvasInteraction = ({
 
       const dragSet = new Set<string>();
 
-      // Only drag entire group if Ctrl/Cmd key is pressed, otherwise drag individual item
+      // Drag behavior: Drag the group if Ctrl+Shift is pressed and item has group
       const shouldDragWholeGroup =
-        (e.ctrlKey || e.metaKey) && clickedItem.groupId;
+        isCtrlPressed && e.shiftKey && clickedItem.groupId;
       const primaryDragUnit = shouldDragWholeGroup
         ? items
             .filter((i) => i.groupId === clickedItem.groupId)
@@ -586,8 +591,13 @@ export const useCanvasInteraction = ({
         setSelectionBox({ ...selectionBox, end: currentCanvasPos });
       } else if (connectingState) {
         const { fromId, fromHandle } = connectingState;
-        const fromItem = items.find((i) => i.id === fromId);
-        if (!fromItem) return;
+        
+        // Check if fromId is a group or individual item
+        const isFromGroup = fromId.startsWith('group-');
+        const fromItem = isFromGroup ? null : items.find((i) => i.id === fromId);
+        
+        // Allow connection from both groups and items
+        if (!isFromGroup && !fromItem) return;
 
         let closestHandle: {
           itemId: string;
@@ -596,6 +606,7 @@ export const useCanvasInteraction = ({
           dist: number;
         } | null = null;
 
+        // Check connections to individual items
         items.forEach((item) => {
           if (item.id === fromId) return;
           (["top", "bottom", "left", "right"] as HandlePosition[]).forEach(
@@ -611,6 +622,49 @@ export const useCanvasInteraction = ({
               ) {
                 closestHandle = {
                   itemId: item.id,
+                  handle,
+                  pos: handlePos,
+                  dist,
+                };
+              }
+            }
+          );
+        });
+        
+        // Check connections to groups
+        const groupIds = [...new Set(items.map(item => item.groupId).filter(Boolean))];
+        groupIds.forEach((groupId) => {
+          if (`group-${groupId}` === fromId) return; // Don't connect to self
+          
+          const groupItems = items.filter(item => item.groupId === groupId);
+          if (groupItems.length === 0) return;
+          
+          const minX = Math.min(...groupItems.map(item => item.x));
+          const minY = Math.min(...groupItems.map(item => item.y));
+          const maxX = Math.max(...groupItems.map(item => item.x + item.width));
+          const maxY = Math.max(...groupItems.map(item => item.y + item.height));
+          
+          const padding = 20;
+          const groupBounds = {
+            x: minX - padding,
+            y: minY - padding,
+            width: maxX - minX + padding * 2,
+            height: maxY - minY + padding * 2,
+          };
+          
+          (["top", "bottom", "left", "right"] as HandlePosition[]).forEach(
+            (handle) => {
+              const handlePos = getHandlePosition(groupBounds, handle);
+              const dist = Math.hypot(
+                currentCanvasPos.x - handlePos.x,
+                currentCanvasPos.y - handlePos.y
+              );
+              if (
+                dist < C.HANDLE_SNAP_RADIUS &&
+                (!closestHandle || dist < closestHandle.dist)
+              ) {
+                closestHandle = {
+                  itemId: `group-${groupId}`,
                   handle,
                   pos: handlePos,
                   dist,
@@ -705,6 +759,7 @@ export const useCanvasInteraction = ({
           dist: number;
         } | null = null;
 
+        // Check connections to individual items
         items.forEach((item) => {
           if (item.id === fromId) return;
           (["top", "bottom", "left", "right"] as HandlePosition[]).forEach(
@@ -719,6 +774,44 @@ export const useCanvasInteraction = ({
                 (!closestHandle || dist < closestHandle.dist)
               ) {
                 closestHandle = { itemId: item.id, handle, dist };
+              }
+            }
+          );
+        });
+        
+        // Check connections to groups
+        const groupIds = [...new Set(items.map(item => item.groupId).filter(Boolean))];
+        groupIds.forEach((groupId) => {
+          if (`group-${groupId}` === fromId) return; // Don't connect to self
+          
+          const groupItems = items.filter(item => item.groupId === groupId);
+          if (groupItems.length === 0) return;
+          
+          const minX = Math.min(...groupItems.map(item => item.x));
+          const minY = Math.min(...groupItems.map(item => item.y));
+          const maxX = Math.max(...groupItems.map(item => item.x + item.width));
+          const maxY = Math.max(...groupItems.map(item => item.y + item.height));
+          
+          const padding = 20;
+          const groupBounds = {
+            x: minX - padding,
+            y: minY - padding,
+            width: maxX - minX + padding * 2,
+            height: maxY - minY + padding * 2,
+          };
+          
+          (["top", "bottom", "left", "right"] as HandlePosition[]).forEach(
+            (handle) => {
+              const handlePos = getHandlePosition(groupBounds, handle);
+              const dist = Math.hypot(
+                currentPos.x - handlePos.x,
+                currentPos.y - handlePos.y
+              );
+              if (
+                dist < C.HANDLE_SNAP_RADIUS &&
+                (!closestHandle || dist < closestHandle.dist)
+              ) {
+                closestHandle = { itemId: `group-${groupId}`, handle, dist };
               }
             }
           );

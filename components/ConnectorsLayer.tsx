@@ -5,7 +5,7 @@ import * as C from '../constants';
 interface ConnectorsLayerProps {
   connectors: Connector[];
   items: CanvasItem[];
-  getHandlePosition: (item: CanvasItem, position: HandlePosition) => Point;
+  getHandlePosition: (item: CanvasItem | { x: number; y: number; width: number; height: number }, position: HandlePosition) => Point;
   connectingState: { fromPos: Point; currentPos: Point } | null;
   hoveredConnectorId: string | null;
   selectedConnectorId: string | null;
@@ -58,6 +58,33 @@ const ConnectorsLayer: React.FC<ConnectorsLayerProps> = React.memo(({
   onConnectorDoubleClick,
 }) => {
   const itemMap = React.useMemo(() => new Map(items.map(item => [item.id, item])), [items]);
+  
+  // Create group bounds map
+  const groupBoundsMap = React.useMemo(() => {
+    const map = new Map<string, { x: number; y: number; width: number; height: number }>();
+    const groupIds = [...new Set(items.map(item => item.groupId).filter(Boolean))];
+    
+    groupIds.forEach((groupId) => {
+      const groupItems = items.filter(item => item.groupId === groupId);
+      if (groupItems.length === 0) return;
+      
+      const minX = Math.min(...groupItems.map(item => item.x));
+      const minY = Math.min(...groupItems.map(item => item.y));
+      const maxX = Math.max(...groupItems.map(item => item.x + item.width));
+      const maxY = Math.max(...groupItems.map(item => item.y + item.height));
+      
+      const padding = 20;
+      map.set(`group-${groupId}`, {
+        x: minX - padding,
+        y: minY - padding,
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + padding * 2,
+      });
+    });
+    
+    return map;
+  }, [items]);
+  
   const allHandles: HandlePosition[] = ['top', 'bottom', 'left', 'right'];
 
   return (
@@ -74,8 +101,8 @@ const ConnectorsLayer: React.FC<ConnectorsLayerProps> = React.memo(({
       }}
     >
       {connectors.map(conn => {
-          const fromItem = itemMap.get(conn.fromId);
-          const toItem = itemMap.get(conn.toId);
+          const fromItem = itemMap.get(conn.fromId) || groupBoundsMap.get(conn.fromId);
+          const toItem = itemMap.get(conn.toId) || groupBoundsMap.get(conn.toId);
           if (!fromItem || !toItem) return null;
 
           let bestPath = { fromHandle: allHandles[0], toHandle: allHandles[0], dist: Infinity };

@@ -181,7 +181,7 @@ const App: React.FC = () => {
     activeEditor,
   });
 
-  const { canvasToScreen } = interactionHandlers;
+  const { getHandlePosition, canvasToScreen, screenToCanvas } = interactionHandlers;
 
   const selectedItems = useMemo(
     () => items.filter((item) => selectedItemIds.includes(item.id)),
@@ -625,7 +625,10 @@ const App: React.FC = () => {
               items={items}
               color={metadata.color}
               label={metadata.label}
+              scale={scale}
               onUpdateLabel={handleUpdateGroupLabel}
+              onConnectionStart={onConnectionStart}
+              getHandlePosition={getHandlePosition}
             />
           );
         })}
