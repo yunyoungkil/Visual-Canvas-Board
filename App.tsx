@@ -63,6 +63,7 @@ const App: React.FC = () => {
     useState<ItemAiToolbarState | null>(null);
   const [tiptapToolbarState, setTiptapToolbarState] =
     useState<TiptapToolbarState | null>(null);
+  const [isImageSelected, setIsImageSelected] = useState(false);
   const [
     connectorLabelEditorFloatingState,
     setConnectorLabelEditorFloatingState,
@@ -313,6 +314,26 @@ const App: React.FC = () => {
     },
     []
   );
+
+  // Listen for image selection events to update toolbar position
+  useEffect(() => {
+    const handleImageSelected = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { top, left } = customEvent.detail;
+
+      if (tiptapToolbarState) {
+        setTiptapToolbarState({
+          ...tiptapToolbarState,
+          top,
+          left,
+        });
+      }
+    };
+
+    window.addEventListener("imageSelected", handleImageSelected);
+    return () =>
+      window.removeEventListener("imageSelected", handleImageSelected);
+  }, [tiptapToolbarState]);
 
   const handleItemDoubleClick = useCallback(
     (item: CanvasItem, itemRect: DOMRect) => {
@@ -655,7 +676,7 @@ const App: React.FC = () => {
         />
       )}
 
-      {tiptapToolbarState?.isVisible && (
+      {tiptapToolbarState?.isVisible && !isImageSelected && (
         <EditorToolbar
           editor={activeEditor}
           top={tiptapToolbarState.top}
@@ -669,6 +690,7 @@ const App: React.FC = () => {
           editor={activeEditor}
           top={tiptapToolbarState.top}
           left={tiptapToolbarState.left}
+          onImageSelectionChange={setIsImageSelected}
         />
       )}
 

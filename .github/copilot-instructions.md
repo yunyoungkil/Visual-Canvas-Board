@@ -58,21 +58,33 @@ The codebase follows a **strict custom hook separation pattern** to keep `App.ts
 
 ### Custom Extensions
 
-- **`extensions/ResizableImage.tsx`**: Custom Tiptap node with 8-way drag handles (corners + edges)
+- **`extensions/ResizableImage.tsx`**: Custom Tiptap node with comprehensive image support
+  - **8-way drag handles**: Corners + edges for precise resizing
+  - **Size constraints**: Min 50px, max 1200px
+  - **Zoom-aware**: Detects canvas scale via DOM transform matrix for accurate resizing at any zoom level
+  - **Image alignment**: Support for left/center/right alignment with `align` attribute
+  - **Image insertion**: URL and file upload (base64) support
+  - **Selection handling**: Click to select (blue border), custom event dispatch for toolbar positioning
+  - **Event isolation**: `stopPropagation()` on all mouse events to prevent canvas drag interference
   - Uses `queueMicrotask()` to avoid flushSync warnings during selection
-  - Min 50px, max 1200px sizing constraints
-  - Click to select (blue border), drag handles to resize
 
 ### Editor State Management
 
 - **Active editor tracking**: `activeEditor` state tracks currently focused Tiptap editor
 - **Toolbar state**: `tiptapToolbarState` controls floating toolbar position (screen coords)
+- **Image toolbar**: Separate `ImageToolbar` component for image alignment (left/center/right)
+  - Positioned at image top center via custom `imageSelected` event
+  - Conditional rendering to avoid overlap with EditorToolbar
 - **Avoid flushSync**: Always wrap editor focus/selection changes in `queueMicrotask()` to prevent React warnings
 - **Wheel scroll isolation**: Text editor containers have `onWheel` handlers that stop propagation to prevent canvas zoom
+- **Focus management**: Canvas clicks trigger `activeEditor.commands.blur()` to deselect images
 
 ### Content Format
 
 - **Storage**: HTML strings in `item.content` field (TextItem, ShapeItem)
+- **Image preservation**: useEffect dependencies optimized to prevent content reset during resize
+  - Content sync effect: Only depends on `(item as TextItem | ShapeItem).content`
+  - Style update effect: Separate effect for color, fontSize changes
 - **Conversion helpers**:
   - `htmlToText()`: Strip HTML for API calls or plain text operations
   - `textToHtml()`: Convert AI-generated plain text back to Tiptap HTML

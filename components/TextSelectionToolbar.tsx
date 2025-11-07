@@ -6,9 +6,15 @@ interface ImageToolbarProps {
   editor: Editor | null;
   top: number;
   left: number;
+  onImageSelectionChange?: (isSelected: boolean) => void;
 }
 
-const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor, top, left }) => {
+const ImageToolbar: React.FC<ImageToolbarProps> = ({
+  editor,
+  top,
+  left,
+  onImageSelectionChange,
+}) => {
   const [isImageSelected, setIsImageSelected] = useState(false);
   const [currentAlign, setCurrentAlign] = useState<"left" | "center" | "right">(
     "left"
@@ -25,6 +31,7 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor, top, left }) => {
       if (node && node.type.name === "image") {
         setIsImageSelected(true);
         setCurrentAlign(node.attrs.align || "left");
+        onImageSelectionChange?.(true);
         return;
       }
 
@@ -36,6 +43,7 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor, top, left }) => {
         if (nodeAtPos && nodeAtPos.type.name === "image") {
           setIsImageSelected(true);
           setCurrentAlign(nodeAtPos.attrs.align || "left");
+          onImageSelectionChange?.(true);
           return;
         }
       } catch (e) {
@@ -45,6 +53,7 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor, top, left }) => {
       // Check if image is active
       const isActive = editor.isActive("image");
       setIsImageSelected(isActive);
+      onImageSelectionChange?.(isActive);
 
       if (!isActive) {
         setCurrentAlign("left");
@@ -79,10 +88,7 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor, top, left }) => {
 
     // Try direct node selection first
     if (node && node.type.name === "image") {
-      editor
-        .chain()
-        .updateAttributes("image", { align })
-        .run();
+      editor.chain().updateAttributes("image", { align }).run();
       return;
     }
 
@@ -115,7 +121,7 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor, top, left }) => {
     <div
       className="fixed bg-white border border-gray-200 rounded-md shadow-lg px-2 py-1 flex items-center gap-1 z-[100000]"
       style={{
-        top: `${top + 10}px`,
+        top: `${top - 35}px`,
         left: `${left}px`,
         transform: "translateX(-50%)",
       }}

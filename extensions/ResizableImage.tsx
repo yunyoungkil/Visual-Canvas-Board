@@ -35,9 +35,25 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
       e.stopPropagation();
 
       const pos = getPos();
+      const img = imgRef.current;
+
       // Use queueMicrotask to avoid flushSync warning during render
       queueMicrotask(() => {
         editor.chain().focus().setNodeSelection(pos).run();
+
+        // Update toolbar position to image top center
+        if (img) {
+          const rect = img.getBoundingClientRect();
+          const customEvent = new CustomEvent("imageSelected", {
+            detail: {
+              top: rect.top,
+              left: rect.left + rect.width / 2,
+              width: rect.width,
+              height: rect.height,
+            },
+          });
+          window.dispatchEvent(customEvent);
+        }
       });
     },
     [editor, getPos]
@@ -112,8 +128,8 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
         document.removeEventListener("mouseup", handleMouseUp);
 
         // Immediately dispatch event to reset canvas state
-        window.dispatchEvent(new CustomEvent('imageResizeComplete'));
-        
+        window.dispatchEvent(new CustomEvent("imageResizeComplete"));
+
         // Then update local state
         resizingRef.current = false;
         setIsResizing(false);
@@ -192,8 +208,8 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
         className={`relative inline-block ${
           selected ? "ring-2 ring-blue-500 rounded" : ""
         }`}
-        style={{ 
-          maxWidth: "100%", 
+        style={{
+          maxWidth: "100%",
           pointerEvents: "auto",
         }}
         onClick={handleImageClick}
