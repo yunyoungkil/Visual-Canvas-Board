@@ -617,10 +617,19 @@ const App: React.FC = () => {
             color: "#3b82f6",
             label: `그룹`,
           };
+
+          // Check if all items in this group are selected
+          const groupItems = items.filter((item) => item.groupId === groupId);
+          const groupItemIds = groupItems.map((item) => item.id);
+          const isGroupSelected =
+            groupItemIds.length > 0 &&
+            groupItemIds.every((id) => selectedItemIds.includes(id));
+
           console.log("[App] Rendering GroupBox:", {
             groupId,
             metadata,
             groupMetadataSize: groupMetadata.size,
+            isGroupSelected,
           });
           return (
             <GroupBox
@@ -630,9 +639,36 @@ const App: React.FC = () => {
               color={metadata.color}
               label={metadata.label}
               scale={scale}
+              isSelected={isGroupSelected}
               onUpdateLabel={handleUpdateGroupLabel}
               onConnectionStart={onConnectionStart}
               getHandlePosition={getHandlePosition}
+              onGroupSelect={(gId, isCtrlPressed) => {
+                const groupItems = items.filter((item) => item.groupId === gId);
+                const groupItemIds = groupItems.map((item) => item.id);
+
+                if (isCtrlPressed) {
+                  // Ctrl+Click: Toggle group selection
+                  const allSelected = groupItemIds.every((id) =>
+                    selectedItemIds.includes(id)
+                  );
+
+                  if (allSelected) {
+                    // Deselect all items in group
+                    setSelectedItemIds((prev) =>
+                      prev.filter((id) => !groupItemIds.includes(id))
+                    );
+                  } else {
+                    // Add all items in group to selection
+                    setSelectedItemIds((prev) => [
+                      ...new Set([...prev, ...groupItemIds]),
+                    ]);
+                  }
+                } else {
+                  // Normal click: Select only this group
+                  setSelectedItemIds(groupItemIds);
+                }
+              }}
             />
           );
         })}

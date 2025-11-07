@@ -995,9 +995,103 @@ export const useAIFeatures = (
       try {
         const aiClient = await getGeminiClient();
 
+        // Extract keywords from user question for smart context selection
+        const extractKeywords = (question: string): string[] => {
+          const normalized = question.toLowerCase();
+          const keywords: string[] = [];
+
+          // Common keywords to look for
+          const patterns = [
+            /이미지/g,
+            /사진/g,
+            /그림/g,
+            /텍스트/g,
+            /글/g,
+            /내용/g,
+            /연결/g,
+            /관계/g,
+            /화살표/g,
+            /그룹/g,
+            /묶음/g,
+            /도형/g,
+            /박스/g,
+            /원/g,
+            /사각형/g,
+          ];
+
+          patterns.forEach((pattern) => {
+            const matches = normalized.match(pattern);
+            if (matches) {
+              keywords.push(...matches);
+            }
+          });
+
+          // Extract quoted strings as keywords
+          const quoted = question.match(/"([^"]+)"|'([^']+)'/g);
+          if (quoted) {
+            keywords.push(
+              ...quoted.map((q) => q.replace(/['"]/g, "").toLowerCase())
+            );
+          }
+
+          return [...new Set(keywords)]; // Remove duplicates
+        };
+
+        // Calculate relevance score for smart item selection
+        const calculateRelevance = (
+          item: CanvasItem,
+          keywords: string[],
+          selectedIds: string[]
+        ): number => {
+          let score = 0;
+
+          // Priority 1: Selected items (highest priority)
+          if (selectedIds.includes(item.id)) {
+            score += 1000;
+          }
+
+          // Priority 2: Keyword matching in content
+          if (item.type === "text" || item.type === "shape") {
+            const content = htmlToText(item.content).toLowerCase();
+            keywords.forEach((keyword) => {
+              if (content.includes(keyword)) {
+                score += 50;
+              }
+            });
+          }
+
+          // Priority 3: Items with many connections (likely important)
+          const connectionCount = connectors.filter(
+            (c) => c.fromId === item.id || c.toId === item.id
+          ).length;
+          score += connectionCount * 20;
+
+          // Priority 4: Items in groups (moderate importance)
+          if (item.groupId) {
+            score += 10;
+          }
+
+          // Priority 5: Type-based relevance
+          if (
+            keywords.some((kw) => kw.includes("이미지") || kw.includes("사진"))
+          ) {
+            if (item.type === "image") score += 30;
+          }
+          if (
+            keywords.some((kw) => kw.includes("텍스트") || kw.includes("글"))
+          ) {
+            if (item.type === "text" || item.type === "shape") score += 30;
+          }
+
+          return score;
+        };
+
         // Prepare parts for multimodal input (text + images)
         const userParts: any[] = [];
         let context = "";
+
+        // Extract keywords for smart selection
+        const keywords = extractKeywords(message);
 
         if (selectedItemIds.length > 0) {
           const selectedItems = items.filter((item) =>
@@ -1134,12 +1228,24 @@ export const useAIFeatures = (
             context += `\n참고: 선택된 이미지 중 처음 ${MAX_IMAGES_TO_SEND}장만 분석에 포함되었습니다. (전체 ${totalImages}장)\n\n`;
           }
         } else {
-          // Show all items with group info (with smart summarization for large canvases)
-          const MAX_ITEMS_DETAIL = 20; // Show detailed content for first 20 items
-          const MAX_CONTENT_LENGTH_SUMMARY = 100; // Shorter content for summary
+          // Smart context selection: prioritize relevant items based on keywords
+          const MAX_ITEMS_DETAIL = 20;
+          const MAX_CONTENT_LENGTH_SUMMARY = 100;
 
-          const allItemsDescription = items
+          // Score and sort all items by relevance
+          const scoredItems = items
+            .map((item) => ({
+              item,
+              score: calculateRelevance(item, keywords, selectedItemIds),
+            }))
+            .sort((a, b) => b.score - a.score);
+
+          // Select top items for detailed description
+          const relevantItems = scoredItems
             .slice(0, MAX_ITEMS_DETAIL)
+            .map((s) => s.item);
+
+          const allItemsDescription = relevantItems
             .map((item, index) => {
               let desc = `ID: ${item.id}, 유형: ${item.type}`;
               if (item.type === "text" || item.type === "shape") {
@@ -1164,7 +1270,13 @@ export const useAIFeatures = (
             .join("\n");
 
           if (allItemsDescription) {
-            context += `현재 캔버스에는 다음 항목들이 있습니다:\n${allItemsDescription}\n`;
+            if (keywords.length > 0) {
+              context += `현재 캔버스에서 관련성 높은 항목들 (키워드: ${keywords.join(
+                ", "
+              )}):\n${allItemsDescription}\n`;
+            } else {
+              context += `현재 캔버스에는 다음 항목들이 있습니다:\n${allItemsDescription}\n`;
+            }
 
             if (items.length > MAX_ITEMS_DETAIL) {
               const remainingItems = items.length - MAX_ITEMS_DETAIL;
@@ -1267,16 +1379,16 @@ export const useAIFeatures = (
             context += `그룹 정보:\n${groupDescriptions}\n\n`;
           }
 
-          // Add images from all items (limit to prevent token overflow)
+          // Add images from relevant items (prioritize by relevance score)
           const MAX_IMAGES_TO_SEND = 5;
-          const imageItems = items.filter(
-            (item) => item.type === "image"
-          ) as ImageItem[];
+          const imageItems = scoredItems
+            .filter((s) => s.item.type === "image")
+            .slice(0, MAX_IMAGES_TO_SEND)
+            .map((s) => s.item) as ImageItem[];
+
           let imagesSent = 0;
 
           for (const item of imageItems) {
-            if (imagesSent >= MAX_IMAGES_TO_SEND) break;
-
             const base64Match = item.src?.match(
               /^data:image\/[^;]+;base64,(.+)$/
             );
@@ -1292,11 +1404,14 @@ export const useAIFeatures = (
           }
 
           // Inform AI about image limitations
-          if (imageItems.length > 0) {
-            if (imageItems.length <= MAX_IMAGES_TO_SEND) {
-              context += `\n[이미지 ${imageItems.length}장이 첨부되었습니다]\n\n`;
+          const totalImageCount = items.filter(
+            (item) => item.type === "image"
+          ).length;
+          if (totalImageCount > 0) {
+            if (totalImageCount <= MAX_IMAGES_TO_SEND) {
+              context += `\n[이미지 ${totalImageCount}장이 첨부되었습니다]\n\n`;
             } else {
-              context += `\n[참고: 캔버스에 총 ${imageItems.length}장의 이미지가 있으나, 토큰 제한으로 처음 ${MAX_IMAGES_TO_SEND}장만 첨부되었습니다. 이미지 관련 질문은 제한적으로만 답변할 수 있습니다.]\n\n`;
+              context += `\n[참고: 캔버스에 총 ${totalImageCount}장의 이미지가 있으나, 관련성이 높은 ${imagesSent}장만 첨부되었습니다.]\n\n`;
             }
           }
         }

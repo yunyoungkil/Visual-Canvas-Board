@@ -7,6 +7,7 @@ interface GroupBoxProps {
   color: string;
   label: string;
   scale: number;
+  isSelected?: boolean;
   onUpdateLabel?: (groupId: string, label: string) => void;
   onConnectionStart?: (
     e: React.MouseEvent,
@@ -18,6 +19,7 @@ interface GroupBoxProps {
     item: { x: number; y: number; width: number; height: number },
     position: HandlePosition
   ) => Point;
+  onGroupSelect?: (groupId: string, isCtrlPressed: boolean) => void;
 }
 
 const GroupBox: React.FC<GroupBoxProps> = ({
@@ -26,9 +28,11 @@ const GroupBox: React.FC<GroupBoxProps> = ({
   color,
   label,
   scale,
+  isSelected = false,
   onUpdateLabel,
   onConnectionStart,
   getHandlePosition,
+  onGroupSelect,
 }) => {
   const groupItems = items.filter((item) => item.groupId === groupId);
 
@@ -62,19 +66,31 @@ const GroupBox: React.FC<GroupBoxProps> = ({
 
   return (
     <div
-      className="absolute pointer-events-none"
+      className="absolute"
       style={{
         transform: `translate(${groupX}px, ${groupY}px)`,
         width: groupWidth,
         height: groupHeight,
         zIndex: 0, // Groups are at base level, items will be above with their zIndex
+        pointerEvents: "none", // Allow clicks to pass through to children
       }}
     >
-      {/* Group box border */}
+      {/* Group box border - clickable for selection */}
       <div
-        className="w-full h-full rounded-lg border-2 border-dashed border-gray-400"
+        className={`group-box-border w-full h-full rounded-lg border-2 cursor-pointer transition-all ${
+          isSelected
+            ? "border-solid border-blue-500 bg-blue-100 bg-opacity-30 shadow-lg"
+            : "border-dashed border-gray-400 hover:border-gray-500 hover:bg-opacity-30"
+        }`}
         style={{
-          backgroundColor: `${color}20`, // 20% opacity
+          backgroundColor: isSelected ? `${color}30` : `${color}20`, // Higher opacity when selected
+          pointerEvents: "auto", // Enable clicks on the border
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onGroupSelect) {
+            onGroupSelect(groupId, e.ctrlKey || e.metaKey);
+          }
         }}
       />
 
@@ -126,8 +142,13 @@ const GroupBox: React.FC<GroupBoxProps> = ({
         style={{ zIndex: 1000 }}
       >
         <div
-          className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-white rounded-t-md cursor-pointer"
-          style={{ backgroundColor: color }}
+          className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold text-white rounded-t-md cursor-pointer transition-all ${
+            isSelected ? "shadow-lg ring-2 ring-blue-400" : ""
+          }`}
+          style={{
+            backgroundColor: color,
+            transform: isSelected ? "scale(1.05)" : "scale(1)",
+          }}
           onMouseDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -156,6 +177,7 @@ const GroupBox: React.FC<GroupBoxProps> = ({
             />
           ) : (
             <>
+              {isSelected && <span className="text-xs">✓</span>}
               <span
                 className="cursor-pointer hover:underline"
                 onClick={(e) => {
@@ -172,7 +194,7 @@ const GroupBox: React.FC<GroupBoxProps> = ({
               </span>
               <span
                 className="text-xs opacity-75 whitespace-nowrap"
-                title="그룹 전체 이동: Ctrl/Cmd + 클릭 후 드래그"
+                title="클릭: 그룹 선택 | Ctrl+클릭: 토글 | 라벨 클릭: 편집"
               >
                 ⓘ
               </span>
