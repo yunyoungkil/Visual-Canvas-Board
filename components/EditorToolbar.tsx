@@ -72,13 +72,14 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       const img = new Image();
       img.onload = () => {
         const width = Math.min(img.width, 600);
-        (editor.chain().focus() as any)
+        // Insert without focus() to prevent selection loss
+        (editor.chain() as any)
           .setImage({ src: imageUrl, width, align: "left" })
           .run();
       };
       img.onerror = () => {
         // Fallback: insert without width
-        (editor.chain().focus() as any)
+        (editor.chain() as any)
           .setImage({ src: imageUrl, align: "left" })
           .run();
       };
@@ -307,57 +308,45 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                             img.onload = () => {
                               const width = Math.min(img.width, 600);
 
-                              // Use queueMicrotask to avoid timing issues
-                              queueMicrotask(() => {
-                                // Insert image at saved cursor position
-                                if (editorPositionRef.current !== null) {
-                                  editor
-                                    .chain()
-                                    .focus()
-                                    .insertContentAt(
-                                      editorPositionRef.current,
-                                      {
-                                        type: "image",
-                                        attrs: {
-                                          src: dataUrl,
-                                          width,
-                                          align: "left",
-                                        },
-                                      }
-                                    )
-                                    .run();
-                                } else {
-                                  (editor.chain().focus() as any)
-                                    .setImage({
+                              // Insert image without focus() to prevent selection loss
+                              // Insert image at saved cursor position
+                              if (editorPositionRef.current !== null) {
+                                editor
+                                  .chain()
+                                  .insertContentAt(editorPositionRef.current, {
+                                    type: "image",
+                                    attrs: {
                                       src: dataUrl,
                                       width,
                                       align: "left",
-                                    })
-                                    .run();
-                                }
-                              });
+                                    },
+                                  })
+                                  .run();
+                              } else {
+                                (editor.chain() as any)
+                                  .setImage({
+                                    src: dataUrl,
+                                    width,
+                                    align: "left",
+                                  })
+                                  .run();
+                              }
                             };
                             img.onerror = () => {
                               // Fallback: insert without width
-                              queueMicrotask(() => {
-                                if (editorPositionRef.current !== null) {
-                                  editor
-                                    .chain()
-                                    .focus()
-                                    .insertContentAt(
-                                      editorPositionRef.current,
-                                      {
-                                        type: "image",
-                                        attrs: { src: dataUrl, align: "left" },
-                                      }
-                                    )
-                                    .run();
-                                } else {
-                                  (editor.chain().focus() as any)
-                                    .setImage({ src: dataUrl, align: "left" })
-                                    .run();
-                                }
-                              });
+                              if (editorPositionRef.current !== null) {
+                                editor
+                                  .chain()
+                                  .insertContentAt(editorPositionRef.current, {
+                                    type: "image",
+                                    attrs: { src: dataUrl, align: "left" },
+                                  })
+                                  .run();
+                              } else {
+                                (editor.chain() as any)
+                                  .setImage({ src: dataUrl, align: "left" })
+                                  .run();
+                              }
                             };
                             img.src = dataUrl;
                           }

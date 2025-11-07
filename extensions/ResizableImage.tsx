@@ -107,18 +107,21 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
         upEvent.preventDefault();
         upEvent.stopPropagation();
 
-        // Immediately stop resizing
-        resizingRef.current = false;
-        setIsResizing(false);
-
-        // Remove event listeners
+        // Remove event listeners first
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
 
-        // Keep global flag set for a short period to prevent immediate canvas interactions
+        // Immediately dispatch event to reset canvas state
+        window.dispatchEvent(new CustomEvent('imageResizeComplete'));
+        
+        // Then update local state
+        resizingRef.current = false;
+        setIsResizing(false);
+
+        // Clear global flag with minimal delay
         setTimeout(() => {
           globalImageResizing = false;
-        }, 150); // Extended delay to ensure all events are processed
+        }, 50);
       };
 
       document.addEventListener("mousemove", handleMouseMove, {
@@ -160,21 +163,26 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
   const alt = node.attrs.alt || "";
   const align = node.attrs.align || "left";
 
-  // Calculate alignment styles
-  const alignmentStyle =
-    align === "center"
-      ? { display: "flex", justifyContent: "center" }
-      : align === "right"
-      ? { display: "flex", justifyContent: "flex-end" }
-      : {};
+  // Calculate alignment styles for block-level container
+  const containerStyle: React.CSSProperties = {
+    pointerEvents: isResizing ? "none" : "auto",
+    display: "flex",
+    width: "100%",
+  };
+
+  // Apply flex justify for proper image alignment
+  if (align === "center") {
+    containerStyle.justifyContent = "center";
+  } else if (align === "right") {
+    containerStyle.justifyContent = "flex-end";
+  } else {
+    containerStyle.justifyContent = "flex-start";
+  }
 
   return (
     <NodeViewWrapper
-      className="block my-4"
-      style={{
-        pointerEvents: isResizing ? "none" : "auto",
-        ...alignmentStyle,
-      }}
+      className="my-4"
+      style={containerStyle}
       onMouseDown={(e) => {
         // Prevent canvas item drag when interacting with image
         e.stopPropagation();
@@ -184,7 +192,10 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
         className={`relative inline-block ${
           selected ? "ring-2 ring-blue-500 rounded" : ""
         }`}
-        style={{ maxWidth: "100%", pointerEvents: "auto" }}
+        style={{ 
+          maxWidth: "100%", 
+          pointerEvents: "auto",
+        }}
         onClick={handleImageClick}
         onMouseDown={(e) => {
           // Prevent canvas item drag
@@ -335,6 +346,7 @@ export const ResizableImage = Node.create({
           alt?: string;
           title?: string;
           width?: number;
+          align?: "left" | "center" | "right";
         }) =>
         ({ commands }: { commands: any }) => {
           return commands.insertContent({

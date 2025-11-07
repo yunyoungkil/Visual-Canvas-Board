@@ -489,6 +489,16 @@ export const useCanvasInteraction = ({
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      // Abort all drag operations if image is being resized
+      if (isImageResizing()) {
+        setDraggingState(null);
+        setSelectionBox(null);
+        setResizingState(null);
+        setPanningState(null);
+        setConnectingState(null);
+        return;
+      }
+
       const currentCanvasPos = screenToCanvas({ x: e.clientX, y: e.clientY });
 
       if (panningState) {
@@ -736,6 +746,23 @@ export const useCanvasInteraction = ({
       setSelectedItemIds,
     ]
   );
+
+  // Reset drag state when image resize completes
+  useEffect(() => {
+    const handleImageResizeComplete = () => {
+      // Force reset all interaction states
+      setDraggingState(null);
+      setSelectionBox(null);
+      setResizingState(null);
+      setPanningState(null);
+      setConnectingState(null);
+    };
+
+    window.addEventListener('imageResizeComplete', handleImageResizeComplete);
+    return () => {
+      window.removeEventListener('imageResizeComplete', handleImageResizeComplete);
+    };
+  }, []);
 
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => handleMouseMove(e);

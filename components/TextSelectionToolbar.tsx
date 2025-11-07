@@ -74,40 +74,41 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ editor, top, left }) => {
     setCurrentAlign(align);
 
     // Update the image node's align attribute
-    queueMicrotask(() => {
-      const { selection, doc } = editor.state;
-      const { node } = selection as any;
+    const { selection } = editor.state;
+    const { node } = selection as any;
 
-      // Try direct node selection first
-      if (node && node.type.name === "image") {
-        editor.chain().focus().updateAttributes("image", { align }).run();
+    // Try direct node selection first
+    if (node && node.type.name === "image") {
+      editor
+        .chain()
+        .updateAttributes("image", { align })
+        .run();
+      return;
+    }
+
+    // Try finding image at current position
+    try {
+      const { doc } = editor.state;
+      const resolvedPos = doc.resolve(selection.from);
+      const nodeAtPos = resolvedPos.parent.maybeChild(resolvedPos.index());
+
+      if (nodeAtPos && nodeAtPos.type.name === "image") {
+        // Calculate the absolute position of the image node
+        const pos =
+          selection.from - resolvedPos.parentOffset + resolvedPos.index();
+        editor
+          .chain()
+          .setNodeSelection(pos)
+          .updateAttributes("image", { align })
+          .run();
         return;
       }
+    } catch (e) {
+      console.error("Error setting alignment:", e);
+    }
 
-      // Try finding image at current position
-      try {
-        const resolvedPos = doc.resolve(selection.from);
-        const nodeAtPos = resolvedPos.parent.maybeChild(resolvedPos.index());
-
-        if (nodeAtPos && nodeAtPos.type.name === "image") {
-          // Calculate the absolute position of the image node
-          const pos =
-            selection.from - resolvedPos.parentOffset + resolvedPos.index();
-          editor
-            .chain()
-            .focus()
-            .setNodeSelection(pos)
-            .updateAttributes("image", { align })
-            .run();
-          return;
-        }
-      } catch (e) {
-        console.error("Error setting alignment:", e);
-      }
-
-      // Fallback: try to find and update any selected image
-      editor.chain().focus().updateAttributes("image", { align }).run();
-    });
+    // Fallback: try to find and update any selected image
+    editor.chain().updateAttributes("image", { align }).run();
   };
 
   return (
