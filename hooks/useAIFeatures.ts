@@ -87,7 +87,10 @@ export const useAIFeatures = (
     setItems,
     setConnectors,
     commitState,
-  }: CanvasStateAndActions,
+    groupMetadata,
+  }: CanvasStateAndActions & {
+    groupMetadata?: Map<string, { color: string; label: string }>;
+  },
   selectedItemIds: string[]
 ) => {
   const [isExporting, setIsExporting] = useState(false);
@@ -1011,10 +1014,84 @@ export const useAIFeatures = (
                 desc += `, 내용: "${htmlToText(item.content)}"`;
               else if (item.type === "image")
                 desc += ` (이미지가 아래에 첨부되었습니다)`;
+
+              // Add group information
+              if (item.groupId && groupMetadata) {
+                const groupInfo = groupMetadata.get(item.groupId);
+                const groupLabel =
+                  groupInfo?.label || `그룹-${item.groupId.substring(0, 8)}`;
+                desc += `, 그룹: "${groupLabel}"`;
+              }
+
               return desc;
             })
             .join("\n");
           context += `현재 캔버스에서 다음 항목들이 선택되었습니다:\n${textDescription}\n\n`;
+
+          // Add connections related to selected items
+          const relatedConnections = connectors.filter(
+            (conn) =>
+              selectedItemIds.includes(conn.fromId) ||
+              selectedItemIds.includes(conn.toId) ||
+              conn.fromId.startsWith("group-") ||
+              conn.toId.startsWith("group-")
+          );
+
+          if (relatedConnections.length > 0) {
+            const connectionDescriptions = relatedConnections
+              .map((conn) => {
+                const fromItem = items.find((i) => i.id === conn.fromId);
+                const toItem = items.find((i) => i.id === conn.toId);
+
+                let fromDesc = conn.fromId;
+                let toDesc = conn.toId;
+
+                if (conn.fromId.startsWith("group-") && groupMetadata) {
+                  const groupId = conn.fromId.replace("group-", "");
+                  const groupInfo = groupMetadata.get(groupId);
+                  fromDesc = `그룹 "${
+                    groupInfo?.label || groupId.substring(0, 8)
+                  }"`;
+                } else if (fromItem) {
+                  if (fromItem.type === "text" || fromItem.type === "shape") {
+                    const content = htmlToText(fromItem.content).substring(
+                      0,
+                      30
+                    );
+                    fromDesc = `"${content}${
+                      content.length >= 30 ? "..." : ""
+                    }"`;
+                  } else {
+                    fromDesc = `${fromItem.type} 항목`;
+                  }
+                }
+
+                if (conn.toId.startsWith("group-") && groupMetadata) {
+                  const groupId = conn.toId.replace("group-", "");
+                  const groupInfo = groupMetadata.get(groupId);
+                  toDesc = `그룹 "${
+                    groupInfo?.label || groupId.substring(0, 8)
+                  }"`;
+                } else if (toItem) {
+                  if (toItem.type === "text" || toItem.type === "shape") {
+                    const content = htmlToText(toItem.content).substring(0, 30);
+                    toDesc = `"${content}${content.length >= 30 ? "..." : ""}"`;
+                  } else {
+                    toDesc = `${toItem.type} 항목`;
+                  }
+                }
+
+                let connDesc = `${fromDesc} → ${toDesc}`;
+                if (conn.label) {
+                  connDesc += ` [연결선 라벨: "${conn.label}"]`;
+                }
+
+                return connDesc;
+              })
+              .join("\n");
+
+            context += `관련된 연결선:\n${connectionDescriptions}\n\n`;
+          }
 
           // Add images as inline data
           for (const item of selectedItems) {
@@ -1034,16 +1111,96 @@ export const useAIFeatures = (
             }
           }
         } else {
+          // Show all items with group info
           const allItemsDescription = items
             .map((item) => {
               let desc = `ID: ${item.id}, 유형: ${item.type}`;
               if (item.type === "text" || item.type === "shape")
                 desc += `, 내용: "${htmlToText(item.content)}"`;
+
+              if (item.groupId && groupMetadata) {
+                const groupInfo = groupMetadata.get(item.groupId);
+                const groupLabel =
+                  groupInfo?.label || `그룹-${item.groupId.substring(0, 8)}`;
+                desc += `, 그룹: "${groupLabel}"`;
+              }
+
               return desc;
             })
             .join("\n");
           if (allItemsDescription) {
             context += `현재 캔버스에는 다음 항목들이 있습니다:\n${allItemsDescription}\n\n`;
+          }
+
+          // Show all connections
+          if (connectors.length > 0) {
+            const allConnectionDescriptions = connectors
+              .map((conn) => {
+                const fromItem = items.find((i) => i.id === conn.fromId);
+                const toItem = items.find((i) => i.id === conn.toId);
+
+                let fromDesc = conn.fromId;
+                let toDesc = conn.toId;
+
+                if (conn.fromId.startsWith("group-") && groupMetadata) {
+                  const groupId = conn.fromId.replace("group-", "");
+                  const groupInfo = groupMetadata.get(groupId);
+                  fromDesc = `그룹 "${
+                    groupInfo?.label || groupId.substring(0, 8)
+                  }"`;
+                } else if (fromItem) {
+                  if (fromItem.type === "text" || fromItem.type === "shape") {
+                    const content = htmlToText(fromItem.content).substring(
+                      0,
+                      30
+                    );
+                    fromDesc = `"${content}${
+                      content.length >= 30 ? "..." : ""
+                    }"`;
+                  } else {
+                    fromDesc = `${fromItem.type} 항목`;
+                  }
+                }
+
+                if (conn.toId.startsWith("group-") && groupMetadata) {
+                  const groupId = conn.toId.replace("group-", "");
+                  const groupInfo = groupMetadata.get(groupId);
+                  toDesc = `그룹 "${
+                    groupInfo?.label || groupId.substring(0, 8)
+                  }"`;
+                } else if (toItem) {
+                  if (toItem.type === "text" || toItem.type === "shape") {
+                    const content = htmlToText(toItem.content).substring(0, 30);
+                    toDesc = `"${content}${content.length >= 30 ? "..." : ""}"`;
+                  } else {
+                    toDesc = `${toItem.type} 항목`;
+                  }
+                }
+
+                let connDesc = `${fromDesc} → ${toDesc}`;
+                if (conn.label) {
+                  connDesc += ` [연결선 라벨: "${conn.label}"]`;
+                }
+
+                return connDesc;
+              })
+              .join("\n");
+
+            context += `캔버스의 연결선:\n${allConnectionDescriptions}\n\n`;
+          }
+
+          // Show groups
+          if (groupMetadata && groupMetadata.size > 0) {
+            const groupDescriptions = Array.from(groupMetadata.entries())
+              .map(([groupId, info]) => {
+                const groupItems = items.filter(
+                  (item) => item.groupId === groupId
+                );
+                return `그룹 "${info.label}" (${groupItems.length}개 항목)`;
+              })
+              .join("\n");
+
+            context += `그룹 정보:\n${groupDescriptions}\n\n`;
           }
         }
 

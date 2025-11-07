@@ -130,7 +130,10 @@ const App: React.FC = () => {
     handleGenerateGroupDraft,
     apiKeyError,
     setApiKeyError,
-  } = useAIFeatures(canvasStateAndActions, selectedItemIds);
+  } = useAIFeatures(
+    { ...canvasStateAndActions, groupMetadata },
+    selectedItemIds
+  );
 
   const {
     canvasRef,
