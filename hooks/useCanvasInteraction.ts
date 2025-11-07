@@ -135,7 +135,12 @@ export const useCanvasInteraction = ({
   );
 
   const getHandlePosition = useCallback(
-    (item: CanvasItem | { x: number; y: number; width: number; height: number }, position: HandlePosition): Point => {
+    (
+      item:
+        | CanvasItem
+        | { x: number; y: number; width: number; height: number },
+      position: HandlePosition
+    ): Point => {
       switch (position) {
         case "top":
           return { x: item.x + item.width / 2, y: item.y };
@@ -591,11 +596,13 @@ export const useCanvasInteraction = ({
         setSelectionBox({ ...selectionBox, end: currentCanvasPos });
       } else if (connectingState) {
         const { fromId, fromHandle } = connectingState;
-        
+
         // Check if fromId is a group or individual item
-        const isFromGroup = fromId.startsWith('group-');
-        const fromItem = isFromGroup ? null : items.find((i) => i.id === fromId);
-        
+        const isFromGroup = fromId.startsWith("group-");
+        const fromItem = isFromGroup
+          ? null
+          : items.find((i) => i.id === fromId);
+
         // Allow connection from both groups and items
         if (!isFromGroup && !fromItem) return;
 
@@ -630,20 +637,26 @@ export const useCanvasInteraction = ({
             }
           );
         });
-        
+
         // Check connections to groups
-        const groupIds = [...new Set(items.map(item => item.groupId).filter(Boolean))];
+        const groupIds = [
+          ...new Set(items.map((item) => item.groupId).filter(Boolean)),
+        ];
         groupIds.forEach((groupId) => {
           if (`group-${groupId}` === fromId) return; // Don't connect to self
-          
-          const groupItems = items.filter(item => item.groupId === groupId);
+
+          const groupItems = items.filter((item) => item.groupId === groupId);
           if (groupItems.length === 0) return;
-          
-          const minX = Math.min(...groupItems.map(item => item.x));
-          const minY = Math.min(...groupItems.map(item => item.y));
-          const maxX = Math.max(...groupItems.map(item => item.x + item.width));
-          const maxY = Math.max(...groupItems.map(item => item.y + item.height));
-          
+
+          const minX = Math.min(...groupItems.map((item) => item.x));
+          const minY = Math.min(...groupItems.map((item) => item.y));
+          const maxX = Math.max(
+            ...groupItems.map((item) => item.x + item.width)
+          );
+          const maxY = Math.max(
+            ...groupItems.map((item) => item.y + item.height)
+          );
+
           const padding = 20;
           const groupBounds = {
             x: minX - padding,
@@ -651,7 +664,7 @@ export const useCanvasInteraction = ({
             width: maxX - minX + padding * 2,
             height: maxY - minY + padding * 2,
           };
-          
+
           (["top", "bottom", "left", "right"] as HandlePosition[]).forEach(
             (handle) => {
               const handlePos = getHandlePosition(groupBounds, handle);
@@ -778,20 +791,26 @@ export const useCanvasInteraction = ({
             }
           );
         });
-        
+
         // Check connections to groups
-        const groupIds = [...new Set(items.map(item => item.groupId).filter(Boolean))];
+        const groupIds = [
+          ...new Set(items.map((item) => item.groupId).filter(Boolean)),
+        ];
         groupIds.forEach((groupId) => {
           if (`group-${groupId}` === fromId) return; // Don't connect to self
-          
-          const groupItems = items.filter(item => item.groupId === groupId);
+
+          const groupItems = items.filter((item) => item.groupId === groupId);
           if (groupItems.length === 0) return;
-          
-          const minX = Math.min(...groupItems.map(item => item.x));
-          const minY = Math.min(...groupItems.map(item => item.y));
-          const maxX = Math.max(...groupItems.map(item => item.x + item.width));
-          const maxY = Math.max(...groupItems.map(item => item.y + item.height));
-          
+
+          const minX = Math.min(...groupItems.map((item) => item.x));
+          const minY = Math.min(...groupItems.map((item) => item.y));
+          const maxX = Math.max(
+            ...groupItems.map((item) => item.x + item.width)
+          );
+          const maxY = Math.max(
+            ...groupItems.map((item) => item.y + item.height)
+          );
+
           const padding = 20;
           const groupBounds = {
             x: minX - padding,
@@ -799,7 +818,7 @@ export const useCanvasInteraction = ({
             width: maxX - minX + padding * 2,
             height: maxY - minY + padding * 2,
           };
-          
+
           (["top", "bottom", "left", "right"] as HandlePosition[]).forEach(
             (handle) => {
               const handlePos = getHandlePosition(groupBounds, handle);

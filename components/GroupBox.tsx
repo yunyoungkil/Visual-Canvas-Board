@@ -14,7 +14,10 @@ interface GroupBoxProps {
     fromHandle: HandlePosition,
     fromPos: Point
   ) => void;
-  getHandlePosition?: (item: { x: number; y: number; width: number; height: number }, position: HandlePosition) => Point;
+  getHandlePosition?: (
+    item: { x: number; y: number; width: number; height: number },
+    position: HandlePosition
+  ) => Point;
 }
 
 const GroupBox: React.FC<GroupBoxProps> = ({

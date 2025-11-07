@@ -181,7 +181,8 @@ const App: React.FC = () => {
     activeEditor,
   });
 
-  const { getHandlePosition, canvasToScreen, screenToCanvas } = interactionHandlers;
+  const { getHandlePosition, canvasToScreen, screenToCanvas } =
+    interactionHandlers;
 
   const selectedItems = useMemo(
     () => items.filter((item) => selectedItemIds.includes(item.id)),

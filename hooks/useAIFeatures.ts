@@ -58,7 +58,7 @@ type AspectRatio = "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
 const generateImageFunctionDeclaration: FunctionDeclaration = {
   name: "generateImage",
   description:
-    '사용자가 이미지 생성을 요청할 때 사용하는 함수입니다. 예를 들어, "고양이 그림 그려줘" 또는 "16:9 비율의 로고 이미지 만들어줘"와 같은 요청이 해당됩니다.',
+    '사용자가 이미지 생성을 요청할 때 사용하는 함수입니다. 예를 들어, "고양이 그림 그려줘", "16:9 비율의 로고 이미지 만들어줘", "3장 만들어줘", "각 문단의 이미지 생성해줘" 등. 여러 장을 요청하면 각 이미지마다 이 함수를 여러 번 호출하세요.',
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -848,16 +848,24 @@ export const useAIFeatures = (
   );
 
   const executeImageGeneration = useCallback(
-    async (prompt: string, aspectRatio?: AspectRatio) => {
+    async (
+      prompt: string,
+      aspectRatio?: AspectRatio,
+      skipMessage: boolean = false,
+      offsetIndex: number = 0
+    ) => {
       setIsGeneratingImage(true);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: `"${prompt}" 이미지를 생성 중입니다...`,
-        },
-      ]);
+
+      if (!skipMessage) {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `"${prompt}" 이미지를 생성 중입니다...`,
+          },
+        ]);
+      }
 
       try {
         const aiClient = await getGeminiClient();
@@ -897,8 +905,8 @@ export const useAIFeatures = (
         const imageUrl = `data:image/png;base64,${base64ImageBytes}`;
 
         const center = screenToCanvas({
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
+          x: window.innerWidth / 2 + offsetIndex * 200,
+          y: window.innerHeight / 2 + offsetIndex * 100,
         });
 
         const baseSize = 512;
@@ -935,12 +943,14 @@ export const useAIFeatures = (
         commitState(newItems, connectors);
         setItems(newItems);
 
-        const successMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: `"${prompt}" 이미지를 캔버스에 추가했습니다!`,
-        };
-        setChatMessages((prev) => [...prev, successMessage]);
+        if (!skipMessage) {
+          const successMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `"${prompt}" 이미지를 캔버스에 추가했습니다!`,
+          };
+          setChatMessages((prev) => [...prev, successMessage]);
+        }
       } catch (imgError: any) {
         console.error("Image generation failed:", imgError);
         const errorMessage: ChatMessage = {
@@ -982,18 +992,47 @@ export const useAIFeatures = (
       try {
         const aiClient = await getGeminiClient();
 
+        // Prepare parts for multimodal input (text + images)
+        const userParts: any[] = [];
         let context = "";
+
         if (selectedItemIds.length > 0) {
-          const selectedItemsDescription = items
-            .filter((item) => selectedItemIds.includes(item.id))
-            .map((item) => {
-              let desc = `ID: ${item.id}, 유형: ${item.type}`;
+          const selectedItems = items.filter((item) =>
+            selectedItemIds.includes(item.id)
+          );
+
+          // Add text description of selected items
+          const textDescription = selectedItems
+            .map((item, index) => {
+              let desc = `[항목 ${index + 1}] ID: ${item.id}, 유형: ${
+                item.type
+              }`;
               if (item.type === "text" || item.type === "shape")
                 desc += `, 내용: "${htmlToText(item.content)}"`;
+              else if (item.type === "image")
+                desc += ` (이미지가 아래에 첨부되었습니다)`;
               return desc;
             })
             .join("\n");
-          context += `현재 캔버스에서 다음 항목들이 선택되었습니다:\n${selectedItemsDescription}\n\n`;
+          context += `현재 캔버스에서 다음 항목들이 선택되었습니다:\n${textDescription}\n\n`;
+
+          // Add images as inline data
+          for (const item of selectedItems) {
+            if (item.type === "image" && item.src) {
+              // Extract base64 data from data URL
+              const base64Match = item.src.match(
+                /^data:image\/[^;]+;base64,(.+)$/
+              );
+              if (base64Match) {
+                userParts.push({
+                  inlineData: {
+                    mimeType: "image/jpeg",
+                    data: base64Match[1],
+                  },
+                });
+              }
+            }
+          }
         } else {
           const allItemsDescription = items
             .map((item) => {
@@ -1008,7 +1047,15 @@ export const useAIFeatures = (
           }
         }
 
-        const fullPrompt = `${context}사용자의 요청: ${message}`;
+        const fullPrompt = `${context}사용자의 요청: ${message}
+
+[응답 형식 지침]
+- 답변은 Markdown 형식으로 작성해주세요.
+- 긴 문장은 적절히 줄바꿈(두 번의 Enter)을 사용하여 단락으로 나누어주세요.
+- 리스트가 필요하면 - 또는 1. 을 사용해주세요.
+- 중요한 부분은 **굵게** 표시해주세요.
+- 코드는 \`백틱\`으로 감싸주세요.`;
+        userParts.unshift({ text: fullPrompt });
 
         const historyForChat = chatMessages.slice(-5).map((msg) => ({
           role: msg.role === "user" ? "user" : "model",
@@ -1017,10 +1064,7 @@ export const useAIFeatures = (
 
         const response = await handleApiCall(aiClient.models.generateContent, {
           model: "gemini-2.5-flash",
-          contents: [
-            ...historyForChat,
-            { role: "user", parts: [{ text: fullPrompt }] },
-          ],
+          contents: [...historyForChat, { role: "user", parts: userParts }],
           config: {
             tools: [
               { functionDeclarations: [generateImageFunctionDeclaration] },
@@ -1029,16 +1073,40 @@ export const useAIFeatures = (
         });
 
         if (response.functionCalls && response.functionCalls.length > 0) {
-          for (const fc of response.functionCalls) {
-            if (fc.name === "generateImage") {
+          const imageCalls = response.functionCalls.filter(
+            (fc) => fc.name === "generateImage"
+          );
+
+          if (imageCalls.length > 0) {
+            // Add a single "generating images" message
+            const generatingMessage: ChatMessage = {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: `${imageCalls.length}장의 이미지를 생성 중입니다...`,
+            };
+            setChatMessages((prev) => [...prev, generatingMessage]);
+
+            // Generate all images sequentially with offset positions
+            for (let i = 0; i < imageCalls.length; i++) {
+              const fc = imageCalls[i];
               const { prompt, aspectRatio } = fc.args;
               if (typeof prompt === "string" && prompt) {
                 await executeImageGeneration(
                   prompt,
-                  aspectRatio as AspectRatio | undefined
+                  aspectRatio as AspectRatio | undefined,
+                  true, // skipMessage flag
+                  i * 150 // offset for each image
                 );
               }
             }
+
+            // Add a single success message
+            const successMessage: ChatMessage = {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: `${imageCalls.length}장의 이미지를 캔버스에 추가했습니다!`,
+            };
+            setChatMessages((prev) => [...prev, successMessage]);
           }
         } else {
           const aiResponseText = response.text;
