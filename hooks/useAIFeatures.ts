@@ -1004,15 +1004,22 @@ export const useAIFeatures = (
             selectedItemIds.includes(item.id)
           );
 
-          // Add text description of selected items
+          // Add text description of selected items (with content length limit)
+          const MAX_CONTENT_LENGTH = 500; // Limit per item content
           const textDescription = selectedItems
             .map((item, index) => {
               let desc = `[항목 ${index + 1}] ID: ${item.id}, 유형: ${
                 item.type
               }`;
-              if (item.type === "text" || item.type === "shape")
-                desc += `, 내용: "${htmlToText(item.content)}"`;
-              else if (item.type === "image")
+              if (item.type === "text" || item.type === "shape") {
+                const fullContent = htmlToText(item.content);
+                const truncatedContent =
+                  fullContent.length > MAX_CONTENT_LENGTH
+                    ? fullContent.substring(0, MAX_CONTENT_LENGTH) +
+                      "... (내용 생략)"
+                    : fullContent;
+                desc += `, 내용: "${truncatedContent}"`;
+              } else if (item.type === "image")
                 desc += ` (이미지가 아래에 첨부되었습니다)`;
 
               // Add group information
@@ -1093,9 +1100,16 @@ export const useAIFeatures = (
             context += `관련된 연결선:\n${connectionDescriptions}\n\n`;
           }
 
-          // Add images as inline data
+          // Add images as inline data (limit to first 5 images to avoid token limits)
+          const MAX_IMAGES_TO_SEND = 5;
+          let imageCount = 0;
+
           for (const item of selectedItems) {
-            if (item.type === "image" && item.src) {
+            if (
+              item.type === "image" &&
+              item.src &&
+              imageCount < MAX_IMAGES_TO_SEND
+            ) {
               // Extract base64 data from data URL
               const base64Match = item.src.match(
                 /^data:image\/[^;]+;base64,(.+)$/
@@ -1107,16 +1121,36 @@ export const useAIFeatures = (
                     data: base64Match[1],
                   },
                 });
+                imageCount++;
               }
             }
           }
+
+          // If there are more images, add a note
+          const totalImages = selectedItems.filter(
+            (item) => item.type === "image"
+          ).length;
+          if (totalImages > MAX_IMAGES_TO_SEND) {
+            context += `\n참고: 선택된 이미지 중 처음 ${MAX_IMAGES_TO_SEND}장만 분석에 포함되었습니다. (전체 ${totalImages}장)\n\n`;
+          }
         } else {
-          // Show all items with group info
+          // Show all items with group info (with smart summarization for large canvases)
+          const MAX_ITEMS_DETAIL = 20; // Show detailed content for first 20 items
+          const MAX_CONTENT_LENGTH_SUMMARY = 100; // Shorter content for summary
+
           const allItemsDescription = items
-            .map((item) => {
+            .slice(0, MAX_ITEMS_DETAIL)
+            .map((item, index) => {
               let desc = `ID: ${item.id}, 유형: ${item.type}`;
-              if (item.type === "text" || item.type === "shape")
-                desc += `, 내용: "${htmlToText(item.content)}"`;
+              if (item.type === "text" || item.type === "shape") {
+                const fullContent = htmlToText(item.content);
+                const truncatedContent =
+                  fullContent.length > MAX_CONTENT_LENGTH_SUMMARY
+                    ? fullContent.substring(0, MAX_CONTENT_LENGTH_SUMMARY) +
+                      "..."
+                    : fullContent;
+                desc += `, 내용: "${truncatedContent}"`;
+              }
 
               if (item.groupId && groupMetadata) {
                 const groupInfo = groupMetadata.get(item.groupId);
@@ -1128,13 +1162,36 @@ export const useAIFeatures = (
               return desc;
             })
             .join("\n");
+
           if (allItemsDescription) {
-            context += `현재 캔버스에는 다음 항목들이 있습니다:\n${allItemsDescription}\n\n`;
+            context += `현재 캔버스에는 다음 항목들이 있습니다:\n${allItemsDescription}\n`;
+
+            if (items.length > MAX_ITEMS_DETAIL) {
+              const remainingItems = items.length - MAX_ITEMS_DETAIL;
+              const remainingByType = {
+                text: items
+                  .slice(MAX_ITEMS_DETAIL)
+                  .filter((i) => i.type === "text" || i.type === "shape")
+                  .length,
+                image: items
+                  .slice(MAX_ITEMS_DETAIL)
+                  .filter((i) => i.type === "image").length,
+              };
+              context += `\n... 외 ${remainingItems}개 항목 (텍스트: ${remainingByType.text}, 이미지: ${remainingByType.image})\n\n`;
+            } else {
+              context += `\n`;
+            }
           }
 
-          // Show all connections
+          // Show all connections (limit to prevent overwhelming)
           if (connectors.length > 0) {
-            const allConnectionDescriptions = connectors
+            const MAX_CONNECTIONS_DETAIL = 30;
+            const connectionsToShow = connectors.slice(
+              0,
+              MAX_CONNECTIONS_DETAIL
+            );
+
+            const allConnectionDescriptions = connectionsToShow
               .map((conn) => {
                 const fromItem = items.find((i) => i.id === conn.fromId);
                 const toItem = items.find((i) => i.id === conn.toId);
@@ -1186,7 +1243,14 @@ export const useAIFeatures = (
               })
               .join("\n");
 
-            context += `캔버스의 연결선:\n${allConnectionDescriptions}\n\n`;
+            context += `캔버스의 연결선:\n${allConnectionDescriptions}\n`;
+
+            if (connectors.length > MAX_CONNECTIONS_DETAIL) {
+              context += `... 외 ${
+                connectors.length - MAX_CONNECTIONS_DETAIL
+              }개 연결선\n`;
+            }
+            context += `\n`;
           }
 
           // Show groups
@@ -1202,6 +1266,39 @@ export const useAIFeatures = (
 
             context += `그룹 정보:\n${groupDescriptions}\n\n`;
           }
+
+          // Add images from all items (limit to prevent token overflow)
+          const MAX_IMAGES_TO_SEND = 5;
+          const imageItems = items.filter(
+            (item) => item.type === "image"
+          ) as ImageItem[];
+          let imagesSent = 0;
+
+          for (const item of imageItems) {
+            if (imagesSent >= MAX_IMAGES_TO_SEND) break;
+
+            const base64Match = item.src?.match(
+              /^data:image\/[^;]+;base64,(.+)$/
+            );
+            if (base64Match) {
+              userParts.push({
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: base64Match[1],
+                },
+              });
+              imagesSent++;
+            }
+          }
+
+          // Inform AI about image limitations
+          if (imageItems.length > 0) {
+            if (imageItems.length <= MAX_IMAGES_TO_SEND) {
+              context += `\n[이미지 ${imageItems.length}장이 첨부되었습니다]\n\n`;
+            } else {
+              context += `\n[참고: 캔버스에 총 ${imageItems.length}장의 이미지가 있으나, 토큰 제한으로 처음 ${MAX_IMAGES_TO_SEND}장만 첨부되었습니다. 이미지 관련 질문은 제한적으로만 답변할 수 있습니다.]\n\n`;
+            }
+          }
         }
 
         const fullPrompt = `${context}사용자의 요청: ${message}
@@ -1211,7 +1308,15 @@ export const useAIFeatures = (
 - 긴 문장은 적절히 줄바꿈(두 번의 Enter)을 사용하여 단락으로 나누어주세요.
 - 리스트가 필요하면 - 또는 1. 을 사용해주세요.
 - 중요한 부분은 **굵게** 표시해주세요.
-- 코드는 \`백틱\`으로 감싸주세요.`;
+- 코드는 \`백틱\`으로 감싸주세요.
+
+[제약사항 인지]
+- 캔버스가 큰 경우, 모든 정보가 전달되지 않았을 수 있습니다.
+- 항목이 많으면 처음 20개만 상세 정보가 제공되고 나머지는 통계로 제공됩니다.
+- 이미지가 많으면 최대 5장까지만 첨부됩니다.
+- 연결선이 많으면 최대 30개까지만 상세 정보가 제공됩니다.
+- 텍스트 내용이 길면 요약되어 제공됩니다.
+- 제공된 정보 범위 내에서 최선의 답변을 해주세요. 정보가 부족하면 그 사실을 명시하고 일반적인 조언을 제공하세요.`;
         userParts.unshift({ text: fullPrompt });
 
         const historyForChat = chatMessages.slice(-5).map((msg) => ({
