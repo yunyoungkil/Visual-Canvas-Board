@@ -38,6 +38,14 @@
         font-size: 1.5em;
         font-weight: bold;
       }
+      .ProseMirror h3 {
+        font-size: 1.25em;
+        font-weight: bold;
+      }
+      .ProseMirror h4 {
+        font-size: 1.125em;
+        font-weight: 600;
+      }
       .ProseMirror ul {
         list-style-type: disc;
         padding-left: 2rem;
@@ -64,12 +72,14 @@
         position: relative;
         padding: 8px 0;
         pointer-events: none; /* 기본적으로 상호작용 비활성화 */
+        -webkit-user-select: none;
         user-select: none;
       }
       /* 편집 모드에서만 상호작용 활성화 */
       .ProseMirror.editing-mode hr {
         cursor: pointer;
         pointer-events: auto;
+        -webkit-user-select: auto;
         user-select: auto;
       }
       .ProseMirror.editing-mode hr:hover {
@@ -90,6 +100,7 @@
         margin: 1rem 0;
         overflow: hidden;
         position: relative;
+        -webkit-user-select: none;
         user-select: none;
         pointer-events: none;
       }
@@ -101,6 +112,7 @@
         vertical-align: top;
         box-sizing: border-box;
         position: relative;
+        -webkit-user-select: none;
         user-select: none;
         pointer-events: none;
       }
@@ -134,15 +146,18 @@
       .ProseMirror.editing-mode table,
       .ProseMirror.editing-mode td,
       .ProseMirror.editing-mode th {
+        -webkit-user-select: text;
         user-select: text;
         pointer-events: auto;
       }
       /* Non-editing mode: disable all interactions */
       .ProseMirror:not(.editing-mode) {
+        -webkit-user-select: none;
         user-select: none;
       }
       .ProseMirror:not(.editing-mode) img {
         pointer-events: none;
+        -webkit-user-select: none;
         user-select: none;
       }
       .ProseMirror:not(.editing-mode) .resize-handle {

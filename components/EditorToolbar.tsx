@@ -33,6 +33,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [bgColor, setBgColor] = useState("#ffff00");
   const [bgOpacity, setBgOpacity] = useState(50);
   const [hrSpacing, setHrSpacing] = useState(50);
+  const [, forceUpdate] = useState({});
   const imageMenuRef = React.useRef<HTMLDivElement>(null);
   const headingMenuRef = React.useRef<HTMLDivElement>(null);
   const listMenuRef = React.useRef<HTMLDivElement>(null);
@@ -41,6 +42,23 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const bgColorMenuRef = React.useRef<HTMLDivElement>(null);
   const hrMenuRef = React.useRef<HTMLDivElement>(null);
   const editorPositionRef = React.useRef<number | null>(null);
+
+  // Force re-render when editor selection changes
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleUpdate = () => {
+      forceUpdate({});
+    };
+
+    editor.on("selectionUpdate", handleUpdate);
+    editor.on("transaction", handleUpdate);
+
+    return () => {
+      editor.off("selectionUpdate", handleUpdate);
+      editor.off("transaction", handleUpdate);
+    };
+  }, [editor]);
 
   if (!editor || editor.isDestroyed) {
     return null;
@@ -639,27 +657,31 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 onMouseDown={(e) => e.preventDefault()}
               >
                 <div className="mb-2">
-                  <label className="text-xs text-gray-600 mb-1 block">
+                  <label htmlFor="bg-color-picker" className="text-xs text-gray-600 mb-1 block">
                     배경색
                   </label>
                   <input
+                    id="bg-color-picker"
                     type="color"
                     value={bgColor}
                     onChange={(e) => setBgColor(e.target.value)}
                     className="w-full h-8 cursor-pointer"
+                    title="배경색 선택"
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="text-xs text-gray-600 mb-1 block">
+                  <label htmlFor="bg-opacity-slider" className="text-xs text-gray-600 mb-1 block">
                     투명도: {bgOpacity}%
                   </label>
                   <input
+                    id="bg-opacity-slider"
                     type="range"
                     min="0"
                     max="100"
                     value={bgOpacity}
                     onChange={(e) => setBgOpacity(Number(e.target.value))}
                     className="w-full"
+                    title="투명도 조절"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -1071,10 +1093,11 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 onMouseDown={(e) => e.preventDefault()}
               >
                 <div className="mb-3">
-                  <label className="text-xs text-gray-600 mb-1 block">
+                  <label htmlFor="hr-spacing-slider" className="text-xs text-gray-600 mb-1 block">
                     여백 크기: {hrSpacing}px
                   </label>
                   <input
+                    id="hr-spacing-slider"
                     type="range"
                     min="0"
                     max="50"

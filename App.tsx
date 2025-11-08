@@ -6,7 +6,6 @@ import type {
   Point,
   TextItem,
   ShapeItem,
-  ItemAiToolbarState,
   TiptapToolbarState,
   ConnectorLabelEditorState,
   SuggestedGroupOverlayState,
@@ -28,7 +27,6 @@ import SuggestedGroupOverlay from "./components/SuggestedGroupOverlay";
 import KeywordAnalysisModal from "./components/KeywordAnalysisModal";
 import ConnectorsLayer from "./components/ConnectorsLayer";
 import AiChatAssistant from "./components/AiChatAssistant";
-import ItemAiToolbar from "./components/ItemAiToolbar";
 import EditorToolbar from "./components/EditorToolbar";
 import ImageToolbar from "./components/TextSelectionToolbar"; // Repurposed for image editing
 import GroupBox from "./components/GroupBox";
@@ -63,8 +61,6 @@ const App: React.FC = () => {
     y: number;
   } | null>(null);
 
-  const [itemAiToolbarFloatingState, setItemAiToolbarFloatingState] =
-    useState<ItemAiToolbarState | null>(null);
   const [tiptapToolbarState, setTiptapToolbarState] =
     useState<TiptapToolbarState | null>(null);
   const [isImageSelected, setIsImageSelected] = useState(false);
@@ -191,13 +187,7 @@ const App: React.FC = () => {
     () => items.filter((item) => selectedItemIds.includes(item.id)),
     [items, selectedItemIds]
   );
-  const itemForAiToolbar = useMemo(
-    () =>
-      itemAiToolbarFloatingState?.itemId
-        ? items.find((i) => i.id === itemAiToolbarFloatingState.itemId)
-        : null,
-    [itemAiToolbarFloatingState, items]
-  );
+
   const detailsPanelEntity = useMemo(() => {
     if (selectedItems.length === 1) return selectedItems[0];
     if (selectedConnectorId)
@@ -242,7 +232,6 @@ const App: React.FC = () => {
         item.content || "",
         setEditingItemId
       );
-      setItemAiToolbarFloatingState(null);
     },
     [items, handleGenerateTextDraftInternal, setEditingItemId]
   );
@@ -256,7 +245,6 @@ const App: React.FC = () => {
         item.content || "",
         setEditingItemId
       );
-      setItemAiToolbarFloatingState(null);
     },
     [items, handleCommitTextAndGenerateDraftInternal, setEditingItemId]
   );
@@ -266,53 +254,9 @@ const App: React.FC = () => {
       const item = items.find((i) => i.id === itemId);
       if (!item || (item.type !== "text" && item.type !== "shape")) return;
       handleUpdateTextDraftWithConnectionsInternal(itemId, item.content || "");
-      setItemAiToolbarFloatingState(null);
     },
     [items, handleUpdateTextDraftWithConnectionsInternal]
   );
-
-  const handleShowItemAiToolbar = useCallback(
-    (item: CanvasItem, itemRect: DOMRect) => {
-      const isTextual = item.type === "text" || item.type === "shape";
-      if (!isTextual) return;
-
-      const htmlContent = (item as TextItem | ShapeItem).content || "";
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = htmlContent;
-      const currentTextValue = tempDiv.textContent || tempDiv.innerText || "";
-
-      const hasConnections = connectors.some(
-        (conn) => conn.fromId === item.id || conn.toId === item.id
-      );
-
-      const canShowGenerateDraftButton =
-        currentTextValue.trim().length > 0 &&
-        currentTextValue.trim().length < 200 &&
-        !htmlContent.includes("<br>");
-      const canShowUpdateDraftButton =
-        !editingItemId &&
-        currentTextValue.trim().length >= 200 &&
-        hasConnections;
-
-      if (canShowGenerateDraftButton || canShowUpdateDraftButton) {
-        setItemAiToolbarFloatingState({
-          isVisible: true,
-          itemId: item.id,
-          top: itemRect.top,
-          left: itemRect.left + itemRect.width / 2,
-          canGenerateDraft: canShowGenerateDraftButton,
-          canUpdateDraft: canShowUpdateDraftButton,
-        });
-      } else {
-        setItemAiToolbarFloatingState(null);
-      }
-    },
-    [connectors, editingItemId]
-  );
-
-  const handleHideItemAiToolbar = useCallback(() => {
-    setItemAiToolbarFloatingState(null);
-  }, []);
 
   const handleStartEditing = useCallback(
     (editor: Editor, itemRect: DOMRect) => {
@@ -329,7 +273,6 @@ const App: React.FC = () => {
         top: toolbarTop,
         left: itemRect.left + itemRect.width / 2,
       });
-      setItemAiToolbarFloatingState(null);
     },
     []
   );
@@ -700,8 +643,6 @@ const App: React.FC = () => {
             onConnectionStart={onConnectionStart}
             onContentUpdate={handleContentUpdate}
             onUpdateItem={handleItemUpdate}
-            onShowItemAiToolbar={handleShowItemAiToolbar}
-            onHideItemAiToolbar={handleHideItemAiToolbar}
             onStartEditing={handleStartEditing}
             onStopEditing={handleStopEditing}
             getHandlePosition={interactionHandlers.getHandlePosition}
@@ -721,27 +662,6 @@ const App: React.FC = () => {
           />
         )}
       </div>
-
-      {itemAiToolbarFloatingState?.isVisible && itemForAiToolbar && (
-        <ItemAiToolbar
-          top={itemAiToolbarFloatingState.top}
-          left={itemAiToolbarFloatingState.left}
-          scale={scale}
-          item={itemForAiToolbar}
-          isGeneratingAIContentForThisItem={
-            isGeneratingAIContentFor === itemAiToolbarFloatingState.itemId
-          }
-          canGenerateDraft={itemAiToolbarFloatingState.canGenerateDraft}
-          canUpdateDraft={itemAiToolbarFloatingState.canUpdateDraft}
-          onGenerateTextDraft={(item, rect) =>
-            handleGenerateTextDraft(item.id, rect)
-          }
-          onUpdateTextDraftWithConnections={(item, rect) =>
-            handleUpdateTextDraftWithConnections(item.id, rect)
-          }
-          style={{ zIndex: 1000 }}
-        />
-      )}
 
       {tiptapToolbarState?.isVisible && !isImageSelected && (
         <EditorToolbar

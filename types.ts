@@ -115,15 +115,6 @@ export interface ChatMessage {
   content: string;
 }
 
-export interface ItemAiToolbarState {
-  isVisible: boolean;
-  itemId: string;
-  top: number; // screen coords
-  left: number; // screen coords
-  canGenerateDraft: boolean;
-  canUpdateDraft: boolean;
-}
-
 export interface TiptapToolbarState {
   isVisible: boolean;
   editor: Editor;

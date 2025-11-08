@@ -64,8 +64,6 @@ interface CanvasItemComponentProps {
     updates: Partial<CanvasItem>,
     shouldCommit?: boolean
   ) => void;
-  onShowItemAiToolbar: (item: CanvasItem, itemRect: DOMRect) => void;
-  onHideItemAiToolbar: () => void;
   onStartEditing: (editor: Editor, itemRect: DOMRect) => void;
   onStopEditing: () => void;
   getHandlePosition: (item: CanvasItem, position: HandlePosition) => Point;
@@ -104,8 +102,6 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
     onConnectionStart,
     onContentUpdate,
     onUpdateItem,
-    onShowItemAiToolbar,
-    onHideItemAiToolbar,
     onStartEditing,
     onStopEditing,
     getHandlePosition,
@@ -119,6 +115,9 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
         extensions: [
           StarterKit.configure({
             horizontalRule: false, // We'll use our own HorizontalRule extension
+            heading: {
+              levels: [1, 2, 3, 4], // Explicitly enable H1-H4
+            },
           }),
           Underline,
           TextAlign.configure({ types: ["heading", "paragraph"] }),
@@ -303,48 +302,6 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
     const hasConnections = connectors.some(
       (conn) => conn.fromId === item.id || conn.toId === item.id
     );
-
-    useEffect(() => {
-      if (!isTextualItem) return;
-
-      const htmlContent = (item as TextItem | ShapeItem).content || "";
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = htmlContent;
-      const currentTextValue = tempDiv.textContent || tempDiv.innerText || "";
-
-      const canShowGenerateDraftButton =
-        isSelected &&
-        currentTextValue.trim().length > 0 &&
-        currentTextValue.trim().length < 200 &&
-        !htmlContent.includes("<br>");
-      const canShowUpdateDraftButton =
-        isSelected &&
-        !isEditing &&
-        currentTextValue.trim().length >= 200 &&
-        hasConnections;
-
-      if (
-        itemContentRef.current &&
-        isSingleSelection &&
-        (canShowGenerateDraftButton || canShowUpdateDraftButton)
-      ) {
-        onShowItemAiToolbar(
-          item,
-          itemContentRef.current.getBoundingClientRect()
-        );
-      } else {
-        onHideItemAiToolbar();
-      }
-    }, [
-      item,
-      isSelected,
-      isSingleSelection,
-      isEditing,
-      hasConnections,
-      onShowItemAiToolbar,
-      onHideItemAiToolbar,
-      isTextualItem,
-    ]);
 
     const getShapePath = (shape: ShapeItem) => {
       const { width, height, border } = shape;
