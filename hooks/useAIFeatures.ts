@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { marked } from "marked";
 import type {
   CanvasItem,
   Connector,
@@ -33,7 +34,40 @@ function htmlToText(html: string | undefined): string {
 }
 
 function textToHtml(text: string): string {
-  return `<p>${text.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+  // Configure marked to handle common markdown features
+  marked.setOptions({
+    breaks: true, // Convert \n to <br>
+    gfm: true, // GitHub Flavored Markdown
+  });
+
+  try {
+    // Convert markdown to HTML
+    let html = marked.parse(text) as string;
+    
+    // Clean up the HTML for better Tiptap compatibility
+    html = html
+      // Remove excessive whitespace between tags
+      .replace(/>\s+</g, '><')
+      // Ensure proper paragraph structure
+      .replace(/<\/p>\s*<p>/g, '</p>\n<p>')
+      // Convert double <br> to paragraph breaks
+      .replace(/<br>\s*<br>/g, '</p><p>')
+      // Trim leading/trailing whitespace in paragraphs
+      .replace(/<p>\s+/g, '<p>')
+      .replace(/\s+<\/p>/g, '</p>')
+      // Ensure blockquotes are properly formatted
+      .replace(/<blockquote>\s+/g, '<blockquote><p>')
+      .replace(/\s+<\/blockquote>/g, '</p></blockquote>')
+      // Clean up list items
+      .replace(/<li>\s+/g, '<li>')
+      .replace(/\s+<\/li>/g, '</li>');
+    
+    return html;
+  } catch (error) {
+    console.error("Markdown parsing failed:", error);
+    // Fallback to simple conversion
+    return `<p>${text.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+  }
 }
 
 function safeParseJsonResponse<T>(jsonString: string): T | null {
@@ -224,7 +258,27 @@ export const useAIFeatures = (
       try {
         const aiClient = await getGeminiClient();
         const promptText = htmlToText(promptHtml);
-        const prompt = `"${promptText}"라는 주제 또는 키워드를 바탕으로 약 3~4문단 길이의 상세한 초안을 작성해주세요.`;
+        const prompt = `"${promptText}"라는 주제 또는 키워드를 바탕으로 약 3~4문단 길이의 상세한 초안을 작성해주세요. 
+
+응답 형식 규칙 (반드시 준수):
+1. 제목: 맨 위에 # 제목 형식으로 작성
+2. 소제목: ## 또는 ### 사용하여 섹션 구분
+3. 각 문단 사이에는 반드시 빈 줄 삽입
+4. 강조할 내용은 **굵게** 표시
+5. 리스트가 필요하면 - 또는 1. 형식 사용
+6. 최소 3개 이상의 문단으로 구성
+
+예시:
+# 제목
+
+첫 번째 문단입니다.
+
+## 소제목
+
+두 번째 문단입니다.
+
+- 항목 1
+- 항목 2`;
         const response = await handleApiCall(aiClient.models.generateContent, {
           model: "gemini-2.5-flash",
           contents: prompt,
@@ -336,7 +390,13 @@ export const useAIFeatures = (
             break;
         }
 
-        prompt += `\n\n[응답 형식]\n수정된 **전체 텍스트**만을 반환해주세요. 다른 설명이나 인사말은 포함하지 마세요.`;
+        prompt += `\n\n[응답 형식]\n수정된 **전체 텍스트**만을 마크다운 형식으로 반환해주세요. 
+- 제목: #, ##, ###
+- 강조: **굵게**
+- 리스트: - 또는 1.
+- 각 문단은 빈 줄로 구분
+- 줄바꿈이 필요한 곳에는 실제로 줄을 바꿔주세요
+다른 설명이나 인사말은 포함하지 마세요.`;
 
         const response = await handleApiCall(aiClient.models.generateContent, {
           model: "gemini-2.5-flash",
@@ -419,7 +479,13 @@ export const useAIFeatures = (
           mainItem.content
         )}\n\`\`\`\n\n이 초안은 다음 항목들과 연결되어 있습니다:\n${connectedItemsInfo.join(
           "\n"
-        )}\n\n연결된 항목들의 정보를 통합하여 메인 초안을 더 풍부하고 논리적으로 업데이트해주세요. 수정된 전체 초안만을 응답으로 반환하세요.`;
+        )}\n\n연결된 항목들의 정보를 통합하여 메인 초안을 더 풍부하고 논리적으로 업데이트해주세요. 
+
+응답 형식:
+- 마크다운 형식 사용 (제목: #, ##, 강조: **굵게**, 리스트: -, 1.)
+- 각 문단은 빈 줄로 구분
+- 줄바꿈이 필요한 곳에는 실제로 줄을 바꿔주세요
+수정된 전체 초안만을 응답으로 반환하세요.`;
 
         const response = await handleApiCall(aiClient.models.generateContent, {
           model: "gemini-2.5-flash",
@@ -692,7 +758,7 @@ export const useAIFeatures = (
       setIsGeneratingSocialPost(true);
       try {
         const aiClient = await getGeminiClient();
-        const prompt = `"${topic}"에 대한 "${platform}" 플랫폼용 "${postType}" 유형의 소셜 미디어 게시물을 작성해줘. 이모지와 해시태그를 적절히 포함해줘.`;
+        const prompt = `"${topic}"에 대한 "${platform}" 플랫폼용 "${postType}" 유형의 소셜 미디어 게시물을 작성해줘. 이모지와 해시태그를 적절히 포함하고, 마크다운 형식으로 강조나 리스트를 사용해줘.`;
         const response = await handleApiCall(aiClient.models.generateContent, {
           model: "gemini-2.5-flash",
           contents: prompt,
@@ -1606,7 +1672,7 @@ export const useAIFeatures = (
           })
           .join("\n");
 
-        const prompt = `다음은 그룹화된 캔버스 항목들입니다:\n${itemsDescription}\n\n이 그룹의 핵심 아이디어를 30단어 이내로 요약하는 간결한 초안 텍스트를 생성해주세요.`;
+        const prompt = `다음은 그룹화된 캔버스 항목들입니다:\n${itemsDescription}\n\n이 그룹의 핵심 아이디어를 30단어 이내로 요약하는 간결한 초안 텍스트를 마크다운 형식으로 생성해주세요. 필요 시 강조(**굵게**)를 사용하세요.`;
         const response = await handleApiCall(aiClient.models.generateContent, {
           model: "gemini-2.5-flash",
           contents: prompt,
