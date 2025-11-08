@@ -154,6 +154,8 @@ const AlignmentButtons: React.FC<{
             value === align ? "bg-white shadow-sm" : "hover:bg-gray-200"
           }`}
           disabled={disabled}
+          title={`${align === "left" ? "왼쪽" : align === "center" ? "중앙" : "오른쪽"} 정렬`}
+          aria-label={`${align === "left" ? "왼쪽" : align === "center" ? "중앙" : "오른쪽"} 정렬`}
         >
           <Icon
             name={
@@ -341,6 +343,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         <button
           onClick={onClose}
           className="p-1 rounded-full hover:bg-gray-100"
+          title="닫기"
+          aria-label="세부 정보 패널 닫기"
         >
           <Icon name="close" className="w-5 h-5 text-gray-600" />
         </button>
@@ -354,8 +358,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       </div>
 
       <div className="flex-grow overflow-y-auto">
-        <div style={{ display: activeTab === "style" ? "block" : "none" }}>
-          {isItem && (
+        {activeTab === "style" && (
+          <div>
+            {isItem && (
             <>
               <PanelSection title="변형">
                 <StatefulInputField
@@ -546,13 +551,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               </div>
             </PanelSection>
           )}
-        </div>
-        <div
-          style={{
-            display: activeTab === "ai" && hasTextualContent ? "block" : "none",
-          }}
-        >
-          <PanelSection title="AI 텍스트 편집">
+          </div>
+        )}
+        {activeTab === "ai" && hasTextualContent && (
+          <div>
+            <PanelSection title="AI 텍스트 편집">
             {isGeneratingAIContentForThisItem ? (
               <div className="flex items-center justify-center p-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
@@ -595,7 +598,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               </div>
             )}
           </PanelSection>
-        </div>
+          </div>
+        )}
         {/* API 관리 탭 완전 삭제됨 */}
       </div>
     </div>
