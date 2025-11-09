@@ -87,7 +87,26 @@ The codebase follows a **strict custom hook separation pattern** to keep `App.ts
   - Style update effect: Separate effect for color, fontSize changes
 - **Conversion helpers**:
   - `htmlToText()`: Strip HTML for API calls or plain text operations
-  - `textToHtml()`: Convert AI-generated plain text back to Tiptap HTML
+  - `textToHtml()`: Convert AI-generated plain text/markdown back to Tiptap HTML
+    - Uses `marked` library for markdown parsing
+    - Applies sophisticated HTML cleanup for Tiptap compatibility
+    - Handles paragraphs, headings, lists, blockquotes, code blocks
+    - Fallback logic ensures safe HTML even on parsing errors
+    - Output optimized for proper line breaks and spacing in Tiptap
+
+### Text Rendering & Styling
+
+- **CSS styling system**: All Tiptap content styled in `index.html` `<style>` section
+  - **Paragraphs**: 0.75em margin-bottom, 1.6 line-height, pre-wrap whitespace
+  - **Headings**: Size-based margins (h1: 2em, h2: 1.5em, h3: 1.25em, h4: 1.125em)
+  - **Lists**: 1em margins, 0.25em item spacing, proper indentation
+  - **Blockquotes**: Left border, italic, gray color, 1em margins
+  - **Code blocks**: Dark background (#1f2937), padding, overflow-x scroll
+  - **Inline code**: Light gray background, pink text, small padding
+  - **Text emphasis**: Bold, italic, mark (yellow highlight)
+  - **Links**: Blue color with hover effect
+- **AI-generated text**: Automatically formatted via `textToHtml()` before insertion
+- **Readability focus**: All elements have proper spacing for optimal UX
 
 ## AI Integration
 

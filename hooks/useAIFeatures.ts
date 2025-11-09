@@ -43,30 +43,48 @@ function textToHtml(text: string): string {
   try {
     // Convert markdown to HTML
     let html = marked.parse(text) as string;
-    
+
     // Clean up the HTML for better Tiptap compatibility
     html = html
-      // Remove excessive whitespace between tags
-      .replace(/>\s+</g, '><')
-      // Ensure proper paragraph structure
-      .replace(/<\/p>\s*<p>/g, '</p>\n<p>')
-      // Convert double <br> to paragraph breaks
-      .replace(/<br>\s*<br>/g, '</p><p>')
-      // Trim leading/trailing whitespace in paragraphs
-      .replace(/<p>\s+/g, '<p>')
-      .replace(/\s+<\/p>/g, '</p>')
-      // Ensure blockquotes are properly formatted
-      .replace(/<blockquote>\s+/g, '<blockquote><p>')
-      .replace(/\s+<\/blockquote>/g, '</p></blockquote>')
-      // Clean up list items
-      .replace(/<li>\s+/g, '<li>')
-      .replace(/\s+<\/li>/g, '</li>');
-    
+      // Ensure proper spacing between headings and content
+      .replace(/<\/h1>\s*<p>/g, "</h1>\n\n<p>")
+      .replace(/<\/h2>\s*<p>/g, "</h2>\n\n<p>")
+      .replace(/<\/h3>\s*<p>/g, "</h3>\n\n<p>")
+      .replace(/<\/h4>\s*<p>/g, "</h4>\n\n<p>")
+      .replace(/<\/h5>\s*<p>/g, "</h5>\n\n<p>")
+      .replace(/<\/h6>\s*<p>/g, "</h6>\n\n<p>")
+      // Ensure proper spacing between paragraphs
+      .replace(/<\/p>\s*<p>/g, "</p>\n<p>")
+      // Ensure proper spacing between lists and paragraphs
+      .replace(/<\/ul>\s*<p>/g, "</ul>\n<p>")
+      .replace(/<\/ol>\s*<p>/g, "</ol>\n<p>")
+      .replace(/<\/p>\s*<ul>/g, "</p>\n<ul>")
+      .replace(/<\/p>\s*<ol>/g, "</p>\n<ol>")
+      // Ensure blockquotes have proper paragraph structure
+      .replace(/<blockquote>\s*(?!<p>)/g, "<blockquote><p>")
+      .replace(/(?<!<\/p>)\s*<\/blockquote>/g, "</p></blockquote>")
+      // Preserve line breaks between tags
+      .trim();
+
+    // Wrap plain text in paragraphs if needed
+    if (!html.startsWith("<")) {
+      html = `<p>${html}</p>`;
+    }
+
     return html;
   } catch (error) {
     console.error("Markdown parsing failed:", error);
-    // Fallback to simple conversion
-    return `<p>${text.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+    // Fallback: Convert plain text to HTML with proper paragraph structure
+    const paragraphs = text.split(/\n\n+/);
+    return paragraphs
+      .map((para) => {
+        const lines = para.split("\n").filter((line) => line.trim());
+        if (lines.length === 0) return "";
+        if (lines.length === 1) return `<p>${lines[0]}</p>`;
+        return `<p>${lines.join("<br>")}</p>`;
+      })
+      .filter((p) => p)
+      .join("\n");
   }
 }
 
@@ -271,11 +289,11 @@ export const useAIFeatures = (
 예시:
 # 제목
 
-첫 번째 문단입니다.
+첫 번째 문단입니다. 여기에 상세한 내용을 자연스럽게 작성합니다.
 
 ## 소제목
 
-두 번째 문단입니다.
+두 번째 문단입니다. 논리적인 흐름을 유지하며 작성합니다.
 
 - 항목 1
 - 항목 2`;
@@ -394,8 +412,8 @@ export const useAIFeatures = (
 - 제목: #, ##, ###
 - 강조: **굵게**
 - 리스트: - 또는 1.
-- 각 문단은 빈 줄로 구분
-- 줄바꿈이 필요한 곳에는 실제로 줄을 바꿔주세요
+- 각 문단 사이에 빈 줄 삽입
+- 자연스럽고 논리적인 문장으로 작성
 다른 설명이나 인사말은 포함하지 마세요.`;
 
         const response = await handleApiCall(aiClient.models.generateContent, {
@@ -453,6 +471,8 @@ export const useAIFeatures = (
       try {
         const aiClient = await getGeminiClient();
         const connectedItemsInfo: string[] = [];
+        const imageParts: any[] = []; // 이미지 데이터를 저장할 배열
+
         connectors.forEach((conn) => {
           let connectedItemId: string | null = null;
           if (conn.fromId === itemId) connectedItemId = conn.toId;
@@ -467,7 +487,32 @@ export const useAIFeatures = (
                 connectedItem.type === "shape"
               )
                 info += `, 내용: "${htmlToText(connectedItem.content)}"`;
-              if (connectedItem.type === "image") info += `, 설명: 이미지`;
+
+              // 이미지 항목 처리: base64 데이터 추출 및 분석 준비
+              if (connectedItem.type === "image") {
+                const imageItem = connectedItem as ImageItem;
+                if (imageItem.src) {
+                  const base64Match = imageItem.src.match(
+                    /^data:image\/([^;]+);base64,(.+)$/
+                  );
+                  if (base64Match) {
+                    const mimeType = `image/${base64Match[1]}`;
+                    const base64Data = base64Match[2];
+                    imageParts.push({
+                      inlineData: {
+                        mimeType: mimeType,
+                        data: base64Data,
+                      },
+                    });
+                    info += `, 이미지 첨부됨 (AI가 분석 예정)`;
+                  } else {
+                    info += `, 이미지 URL: ${imageItem.src}`;
+                  }
+                } else {
+                  info += `, 설명: 이미지`;
+                }
+              }
+
               if (conn.label) info += `, 관계: "${conn.label}"`;
               info += "]";
               connectedItemsInfo.push(info);
@@ -475,21 +520,41 @@ export const useAIFeatures = (
           }
         });
 
-        const prompt = `다음은 메인 텍스트 초안입니다:\n\`\`\`\n${htmlToText(
+        const promptText = `다음은 메인 텍스트 초안입니다:\n\`\`\`\n${htmlToText(
           mainItem.content
         )}\n\`\`\`\n\n이 초안은 다음 항목들과 연결되어 있습니다:\n${connectedItemsInfo.join(
           "\n"
-        )}\n\n연결된 항목들의 정보를 통합하여 메인 초안을 더 풍부하고 논리적으로 업데이트해주세요. 
+        )}\n\n**중요**: 각 연결선의 "관계" 라벨에 명시된 작업을 반드시 수행해주세요.
+- "이미지 프롬프트 N개 생성"이라면 → N개의 구체적인 이미지 생성 프롬프트를 리스트로 추가
+- "요약"이라면 → 연결된 내용을 요약하여 통합
+- "확장"이라면 → 연결된 내용을 바탕으로 상세히 확장
+- 이미지가 첨부되어 있다면 → 이미지 내용을 분석하여 관련 정보 추가
+- 기타 요청사항이 있다면 그대로 수행
+
+${
+  imageParts.length > 0
+    ? `\n첨부된 이미지 ${imageParts.length}개를 분석하여 관련 내용을 풍부하게 만들어주세요.\n`
+    : ""
+}
+연결된 항목들의 정보와 관계 라벨의 지시사항을 모두 반영하여 메인 초안을 업데이트해주세요.
 
 응답 형식:
 - 마크다운 형식 사용 (제목: #, ##, 강조: **굵게**, 리스트: -, 1.)
-- 각 문단은 빈 줄로 구분
-- 줄바꿈이 필요한 곳에는 실제로 줄을 바꿔주세요
+- 각 문단 사이에 빈 줄 삽입
+- 자연스럽고 논리적인 문장으로 작성
+- 이미지 프롬프트는 명확하고 구체적으로 작성
 수정된 전체 초안만을 응답으로 반환하세요.`;
 
+        // 멀티모달 콘텐츠 구성: 텍스트 + 이미지
+        const contents =
+          imageParts.length > 0
+            ? [{ text: promptText }, ...imageParts]
+            : promptText;
+
         const response = await handleApiCall(aiClient.models.generateContent, {
-          model: "gemini-2.5-flash",
-          contents: prompt,
+          model:
+            imageParts.length > 0 ? "gemini-2.5-flash" : "gemini-2.5-flash", // Flash 모델도 멀티모달 지원
+          contents: contents,
         });
         const updatedContent = textToHtml(response.text);
 
@@ -758,7 +823,13 @@ export const useAIFeatures = (
       setIsGeneratingSocialPost(true);
       try {
         const aiClient = await getGeminiClient();
-        const prompt = `"${topic}"에 대한 "${platform}" 플랫폼용 "${postType}" 유형의 소셜 미디어 게시물을 작성해줘. 이모지와 해시태그를 적절히 포함하고, 마크다운 형식으로 강조나 리스트를 사용해줘.`;
+        const prompt = `"${topic}"에 대한 "${platform}" 플랫폼용 "${postType}" 유형의 소셜 미디어 게시물을 작성해줘. 
+        
+작성 규칙:
+- 이모지와 해시태그를 적절히 포함
+- 마크다운 형식으로 강조나 리스트 사용
+- 문단 사이에 빈 줄 삽입
+- 자연스럽고 매력적인 문장으로 작성`;
         const response = await handleApiCall(aiClient.models.generateContent, {
           model: "gemini-2.5-flash",
           contents: prompt,

@@ -25,22 +25,29 @@
 - **AI:** Google Gemini API (`@google/genai` SDK)
 - **데이터 저장:** Local Storage
 
-## 최근 업데이트 (2025-01-06)
+## 최근 업데이트
 
-### React 18 + Tiptap 마이그레이션
+### v2.2.0 (2025-01-08) - AI 응답 가독성 대폭 개선
+
+- **마크다운 렌더링 품질 향상:** AI 생성 텍스트의 단락, 제목, 리스트, 인용문, 코드 블록 등 모든 요소에 적절한 여백 및 줄간격 추가
+- **textToHtml 함수 최적화:** 마크다운 → HTML 변환 로직 개선, 폴백 처리 강화
+- **CSS 스타일 시스템 개선:** Tiptap 에디터의 모든 요소에 일관된 스타일 적용
+- **사용자 경험 향상:** AI 응답의 줄바꿈과 단락 구분이 명확하게 표시되어 읽기 편해짐
+
+### v2.1.0 (2025-01-07) - 이미지 정렬 기능 추가
+
+- 텍스트 에디터 내 이미지 왼쪽/중앙/오른쪽 정렬 기능
+- URL 및 파일 업로드 방식 이미지 삽입 개선
+- 텍스트 박스 리사이징 시 이미지 보존 문제 해결
+- 툴바 위치 정확도 및 겹침 문제 해결
+
+### v2.0.0 (2025-01-06) - React 18 + Tiptap 마이그레이션
+
 - React 19에서 React 18.3.1로 다운그레이드하여 Tiptap 호환성 확보
 - Tiptap 2.4.0에서 2.10.3으로 업그레이드
 - 모든 의존성 충돌 해결 및 안정화
-
-### 이미지 리사이징 기능
-- 커스텀 Tiptap 확장(ResizableImage) 구현
-- 8방향 드래그 핸들 (모서리 4개 + 좌우 엣지)
-- 클릭으로 이미지 선택 및 시각적 피드백
-
-### 성능 및 UX 개선
-- flushSync 경고 해결 (queueMicrotask 사용)
-- 텍스트 에디터 위에서 휠 스크롤 시 캔버스 줌 방지
-- AI Features API Key 에러 핸들링 개선
+- 커스텀 이미지 리사이징 기능 구현 (8방향 드래그 핸들)
+- flushSync 경고 해결 및 성능 개선
 
 자세한 변경 사항은 `CHANGELOG.md`를 참고해주세요.
 
@@ -83,6 +90,7 @@ GEMINI_API_KEY=your_actual_api_key_here
 ```
 
 > **API 키 발급 방법**:
+>
 > 1. [Google AI Studio](https://aistudio.google.com/apikey)에 접속
 > 2. Google 계정으로 로그인
 > 3. "Create API Key" 버튼 클릭
@@ -118,12 +126,13 @@ Gemini API와의 통신을 관리하는 핵심 파일입니다.
 **주요 기능:**
 
 1. **API 키 검증**
+
    ```typescript
-   import { validateApiKey, hasApiKey } from './utils/apiClient';
-   
+   import { validateApiKey, hasApiKey } from "./utils/apiClient";
+
    // API 키 존재 여부 확인
    const exists = hasApiKey();
-   
+
    // API 키 유효성 검증
    const result = await validateApiKey();
    if (!result.isValid) {
@@ -132,53 +141,57 @@ Gemini API와의 통신을 관리하는 핵심 파일입니다.
    ```
 
 2. **클라이언트 생성**
+
    ```typescript
-   import { createGeminiClient } from './utils/apiClient';
-   
+   import { createGeminiClient } from "./utils/apiClient";
+
    // Gemini AI 클라이언트 인스턴스 생성
    const client = await createGeminiClient();
    ```
 
 3. **에러 처리**
+
    ```typescript
-   import { withApiErrorHandling, parseApiError } from './utils/apiClient';
-   
+   import { withApiErrorHandling, parseApiError } from "./utils/apiClient";
+
    // API 호출을 래핑하여 자동 에러 처리
    const result = await withApiErrorHandling(
      async () => {
        // API 호출 로직
      },
      (error) => {
-       console.error('API 에러:', error.message);
+       console.error("API 에러:", error.message);
      }
    );
    ```
 
 4. **모델 상수**
+
    ```typescript
-   import { GEMINI_MODELS } from './utils/apiClient';
-   
+   import { GEMINI_MODELS } from "./utils/apiClient";
+
    // 사용 가능한 모델:
    // - GEMINI_MODELS.FLASH: 빠른 텍스트 생성 (gemini-2.5-flash)
    // - GEMINI_MODELS.PRO: 고품질 텍스트 생성 (gemini-2.5-pro)
    // - GEMINI_MODELS.IMAGEN: 이미지 생성 (imagen-4.0-generate-001)
    // - GEMINI_MODELS.VEO: 비디오 생성 (veo-3.1-fast-generate-preview)
    // - GEMINI_MODELS.FLASH_IMAGE: 멀티모달 (gemini-2.5-flash-image)
-   
-   const model = client.getGenerativeModel({ 
-     model: GEMINI_MODELS.FLASH 
+
+   const model = client.getGenerativeModel({
+     model: GEMINI_MODELS.FLASH,
    });
    ```
 
 5. **API 설정 상수**
+
    ```typescript
-   import { API_CONFIG } from './utils/apiClient';
-   
+   import { API_CONFIG } from "./utils/apiClient";
+
    // 생성 온도 설정
    // - API_CONFIG.TEMPERATURE.CONSERVATIVE (0.4): 일관적인 결과
    // - API_CONFIG.TEMPERATURE.BALANCED (0.7): 균형잡힌 결과
    // - API_CONFIG.TEMPERATURE.CREATIVE (1.0): 창의적인 결과
-   
+
    // 최대 토큰 수
    // - API_CONFIG.MAX_TOKENS.SHORT (512)
    // - API_CONFIG.MAX_TOKENS.MEDIUM (2048)
@@ -202,33 +215,33 @@ API 호출 중 발생할 수 있는 에러 타입:
 ### API 사용 예제
 
 ```typescript
-import { 
-  createGeminiClient, 
-  GEMINI_MODELS, 
+import {
+  createGeminiClient,
+  GEMINI_MODELS,
   API_CONFIG,
-  withApiErrorHandling 
-} from './utils/apiClient';
+  withApiErrorHandling,
+} from "./utils/apiClient";
 
 async function generateContent(prompt: string) {
   return await withApiErrorHandling(
     async () => {
       const client = await createGeminiClient();
-      const model = client.getGenerativeModel({ 
-        model: GEMINI_MODELS.FLASH 
+      const model = client.getGenerativeModel({
+        model: GEMINI_MODELS.FLASH,
       });
-      
+
       const result = await model.generateContent({
-        contents: [{ parts: [{ text: prompt }], role: 'user' }],
+        contents: [{ parts: [{ text: prompt }], role: "user" }],
         generationConfig: {
           temperature: API_CONFIG.TEMPERATURE.BALANCED,
           maxOutputTokens: API_CONFIG.MAX_TOKENS.MEDIUM,
         },
       });
-      
+
       return result.response.text();
     },
     (error) => {
-      console.error('콘텐츠 생성 실패:', error.message);
+      console.error("콘텐츠 생성 실패:", error.message);
     }
   );
 }
@@ -267,6 +280,7 @@ Visual-Canvas-Board/
 **문제**: "GEMINI_API_KEY 환경변수가 설정되지 않았습니다" 오류 발생
 
 **해결 방법**:
+
 1. 프로젝트 루트에 `.env` 파일이 있는지 확인
 2. `.env` 파일에 `GEMINI_API_KEY=your_key_here` 형식으로 API 키 입력
 3. 개발 서버를 재시작 (`Ctrl+C` 후 `npm run dev`)
@@ -276,6 +290,7 @@ Visual-Canvas-Board/
 **문제**: "API 키가 유효하지 않거나 찾을 수 없습니다" 오류 발생
 
 **해결 방법**:
+
 1. [Google AI Studio](https://aistudio.google.com/apikey)에서 새로운 API 키 생성
 2. API 키가 올바르게 복사되었는지 확인 (공백이나 줄바꿈이 없어야 함)
 3. API 키는 일반적으로 'AI'로 시작합니다
@@ -285,6 +300,7 @@ Visual-Canvas-Board/
 **문제**: "Imagen API는 현재 결제가 설정된 사용자만 이용할 수 있습니다" 오류 발생
 
 **해결 방법**:
+
 1. Google Cloud Console에서 결제 계정 설정
 2. 또는 이미지 생성 기능 대신 텍스트 생성 기능만 사용
 
@@ -293,6 +309,7 @@ Visual-Canvas-Board/
 **문제**: "flushSync" 경고 발생
 
 **해결 방법**:
+
 - 이미 해결된 문제입니다. 최신 버전을 사용하고 있는지 확인하세요.
 - `ResizableImage.tsx`에서 `queueMicrotask()`를 사용하여 해결됨
 
@@ -301,9 +318,10 @@ Visual-Canvas-Board/
 **문제**: Tiptap 에디터가 작동하지 않음
 
 **해결 방법**:
+
 1. React 버전이 18.3.1인지 확인: `npm list react`
 2. Tiptap 버전이 2.10.3인지 확인: `npm list @tiptap/react`
-3. `package-lock.json` 삭제 후 재설치: 
+3. `package-lock.json` 삭제 후 재설치:
    ```bash
    rm package-lock.json
    rm -rf node_modules
@@ -315,6 +333,7 @@ Visual-Canvas-Board/
 **문제**: 빌드 시 TypeScript 오류 발생
 
 **해결 방법**:
+
 ```bash
 # TypeScript 캐시 삭제
 rm -rf node_modules/.vite
@@ -350,4 +369,3 @@ npm run build
 ---
 
 **Visual Canvas Board** - AI 기반 창의적 콘텐츠 기획 도구
-
