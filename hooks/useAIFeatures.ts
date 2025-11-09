@@ -909,17 +909,7 @@ ${
             imageParts.length > 0 ? "gemini-2.5-flash" : "gemini-2.5-flash", // Flash 모델도 멀티모달 지원
           contents: contents,
         });
-
-        console.log(
-          `📄 Gemini 응답 원본 (처음 500자):\n${response.text.substring(
-            0,
-            500
-          )}`
-        );
         let updatedContent = textToHtml(response.text);
-        console.log(
-          `📝 변환된 HTML (처음 500자):\n${updatedContent.substring(0, 500)}`
-        );
 
         // Gemini가 삽입한 이미지 파일명을 실제 base64 이미지로 교체
         const imageRefRegex =
