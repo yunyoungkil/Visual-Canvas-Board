@@ -471,54 +471,110 @@ export const useAIFeatures = (
       try {
         const aiClient = await getGeminiClient();
         const connectedItemsInfo: string[] = [];
-        const imageParts: any[] = []; // 이미지 데이터를 저장할 배열
+        const imageParts: any[] = [];
+        
+        // 스마트 탐색 설정
+        const MAX_TEXT_DEPTH = 2; // 텍스트는 2단계까지
+        const MAX_IMAGE_DEPTH = 5; // 이미지는 깊게 탐색
+        const MAX_TOTAL_ITEMS = 20; // 안전 장치
+        const visited = new Set<string>([itemId]); // 초안 자신 제외
 
-        connectors.forEach((conn) => {
-          let connectedItemId: string | null = null;
-          if (conn.fromId === itemId) connectedItemId = conn.toId;
-          else if (conn.toId === itemId) connectedItemId = conn.fromId;
+        // 재귀 탐색 함수
+        const exploreConnections = (currentId: string, depth: number) => {
+          if (visited.size >= MAX_TOTAL_ITEMS) return;
 
-          if (connectedItemId) {
-            const connectedItem = items.find((i) => i.id === connectedItemId);
-            if (connectedItem) {
-              let info = `[항목 ID: ${connectedItem.id}, 유형: ${connectedItem.type}`;
-              if (
-                connectedItem.type === "text" ||
-                connectedItem.type === "shape"
-              )
-                info += `, 내용: "${htmlToText(connectedItem.content)}"`;
+          connectors.forEach((conn) => {
+            let nextId: string | null = null;
+            if (conn.fromId === currentId) nextId = conn.toId;
+            else if (conn.toId === currentId) nextId = conn.fromId;
 
-              // 이미지 항목 처리: base64 데이터 추출 및 분석 준비
-              if (connectedItem.type === "image") {
-                const imageItem = connectedItem as ImageItem;
-                if (imageItem.src) {
-                  const base64Match = imageItem.src.match(
-                    /^data:image\/([^;]+);base64,(.+)$/
-                  );
-                  if (base64Match) {
-                    const mimeType = `image/${base64Match[1]}`;
-                    const base64Data = base64Match[2];
+            if (!nextId || visited.has(nextId)) return;
+
+            const item = items.find((i) => i.id === nextId);
+            if (!item) return;
+
+            // 깊이 제한: 텍스트는 2단계, 이미지는 5단계
+            const maxDepth = item.type === 'image' ? MAX_IMAGE_DEPTH : MAX_TEXT_DEPTH;
+            if (depth > maxDepth) return;
+
+            visited.add(nextId);
+            console.log(`[${depth}단계] ${currentId.substring(0, 8)} → ${nextId.substring(0, 8)} (${item.type})`);
+
+            // 정보 수집
+            const depthLabel = depth > 1 ? `${depth}단계 참조 - ` : '';
+            let info = `[${depthLabel}ID: ${item.id}, 유형: ${item.type}`;
+
+            // 텍스트 내용
+            if (item.type === "text" || item.type === "shape") {
+              info += `, 내용: "${htmlToText(item.content)}"`;
+            }
+
+            // 이미지 수집
+            if (item.type === "image") {
+              const imageItem = item as ImageItem;
+              if (imageItem.src) {
+                const base64Match = imageItem.src.match(/^data:image\/([^;]+);base64,(.+)$/);
+                if (base64Match) {
+                  const format = base64Match[1];
+                  const data = base64Match[2];
+                  
+                  const supported = ["jpeg", "jpg", "png", "webp", "gif"];
+                  if (supported.includes(format.toLowerCase())) {
                     imageParts.push({
-                      inlineData: {
-                        mimeType: mimeType,
-                        data: base64Data,
-                      },
+                      inlineData: { mimeType: `image/${format}`, data }
                     });
-                    info += `, 이미지 첨부됨 (AI가 분석 예정)`;
+                    info += `, 이미지 추가`;
                   } else {
-                    info += `, 이미지 URL: ${imageItem.src}`;
+                    info += `, 미지원 형식: ${format}`;
                   }
-                } else {
-                  info += `, 설명: 이미지`;
                 }
               }
-
-              if (conn.label) info += `, 관계: "${conn.label}"`;
-              info += "]";
-              connectedItemsInfo.push(info);
             }
-          }
-        });
+
+            // 그룹 이미지 수집
+            if (item.groupId) {
+              const groupImages = items.filter(
+                (i) => i.groupId === item.groupId && i.type === "image"
+              ) as ImageItem[];
+
+              if (groupImages.length > 0) {
+                console.log(`[${depth}단계 그룹] ${groupImages.length}개 이미지`);
+                info += `, 그룹 내 이미지: ${groupImages.length}개`;
+
+                groupImages.forEach((gImg) => {
+                  if (!gImg.src || visited.has(gImg.id)) return;
+                  visited.add(gImg.id);
+
+                  const match = gImg.src.match(/^data:image\/([^;]+);base64,(.+)$/);
+                  if (match) {
+                    const format = match[1];
+                    const data = match[2];
+                    const supported = ["jpeg", "jpg", "png", "webp", "gif"];
+                    
+                    if (supported.includes(format.toLowerCase())) {
+                      imageParts.push({
+                        inlineData: { mimeType: `image/${format}`, data }
+                      });
+                    }
+                  }
+                });
+              }
+            }
+
+            if (conn.label) info += `, 관계: "${conn.label}"`;
+            info += "]";
+            connectedItemsInfo.push(info);
+
+            // 재귀 탐색 계속
+            exploreConnections(nextId, depth + 1);
+          });
+        };
+
+        // 탐색 시작
+        exploreConnections(itemId, 1);
+
+        console.log(`✓ 총 ${visited.size - 1}개 항목 수집`);
+        console.log(`✓ 이미지 ${imageParts.length}개 수집`);
 
         const promptText = `다음은 메인 텍스트 초안입니다:\n\`\`\`\n${htmlToText(
           mainItem.content

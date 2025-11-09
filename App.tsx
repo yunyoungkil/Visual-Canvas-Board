@@ -568,12 +568,6 @@ const App: React.FC = () => {
             groupItemIds.length > 0 &&
             groupItemIds.every((id) => selectedItemIds.includes(id));
 
-          console.log("[App] Rendering GroupBox:", {
-            groupId,
-            metadata,
-            groupMetadataSize: groupMetadata.size,
-            isGroupSelected,
-          });
           return (
             <GroupBox
               key={groupId}
@@ -790,14 +784,38 @@ const App: React.FC = () => {
             selectedItemIds.length === 1
               ? items.find((i) => i.id === selectedItemIds[0])
               : null;
-          if (!selectedItem || selectedItem.type === "image") return false;
-          return connectors.some(
-            (c) =>
-              (c.fromId === selectedItem.id &&
-                items.some((i) => i.id === c.toId)) ||
-              (c.toId === selectedItem.id &&
-                items.some((i) => i.id === c.fromId))
-          );
+
+          if (!selectedItem || selectedItem.type === "image") {
+            return false;
+          }
+
+          // 연결선이 있는지 확인
+          const hasConnection = connectors.some((c) => {
+            if (c.fromId === selectedItem.id || c.toId === selectedItem.id) {
+              const connectedId =
+                c.fromId === selectedItem.id ? c.toId : c.fromId;
+
+              // 일반 항목으로 연결되었거나
+              const hasDirectConnection = items.some(
+                (i) => i.id === connectedId
+              );
+
+              // 그룹으로 연결되었는지 확인 (groupId로 연결)
+              // connectedId가 "group-xxx" 형태일 수 있으므로 접두사 제거
+              const groupIdToCheck = connectedId.startsWith("group-")
+                ? connectedId.substring(6)
+                : connectedId;
+
+              const hasGroupConnection = items.some(
+                (i) => i.groupId === groupIdToCheck || i.groupId === connectedId
+              );
+
+              return hasDirectConnection || hasGroupConnection;
+            }
+            return false;
+          });
+
+          return hasConnection;
         })()}
         isGeneratingAIContent={!!isGeneratingAIContentFor}
         className="z-50"
