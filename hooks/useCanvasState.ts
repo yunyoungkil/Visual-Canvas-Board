@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { CanvasItem, Connector, Point } from "../types";
+import type { CanvasItem, Connector, Point, ImageItem } from "../types";
 import * as C from "../constants";
+import { indexedDBStorage } from "../utils/indexedDBStorage";
 
 export const useCanvasState = () => {
   const [items, setItems] = useState<CanvasItem[]>([]);
@@ -63,77 +64,91 @@ export const useCanvasState = () => {
   }, []);
 
   useEffect(() => {
-    const savedStateJSON = localStorage.getItem(C.LOCAL_STORAGE_KEY);
-    const initializeEmptyState = () => {
-      setViewOffset({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-      commitState([], []);
-    };
-
-    if (savedStateJSON) {
+    const loadState = async () => {
       try {
-        const savedState = JSON.parse(savedStateJSON);
-        let maxZ = 0;
-        const itemsToLoad = savedState.items || [];
-        const itemsWithDefaults = itemsToLoad.map(
-          (item: CanvasItem, index: number) => {
-            const zIndex = item.zIndex ?? index + 1;
-            if (zIndex > maxZ) maxZ = zIndex;
-            const hydratedItem: any = { ...item, zIndex };
-            if (hydratedItem.opacity === undefined) hydratedItem.opacity = 1;
-            if (hydratedItem.borderRadius === undefined)
-              hydratedItem.borderRadius =
-                hydratedItem.type === "shape" || hydratedItem.type === "image"
-                  ? 4
-                  : 0;
-            if (
-              (hydratedItem.type === "text" || hydratedItem.type === "shape") &&
-              !hydratedItem.background
-            ) {
-              hydratedItem.background = { type: "solid", color: "#ffffff" };
+        // IndexedDB에서 로드 시도
+        const savedState = await indexedDBStorage.load(C.LOCAL_STORAGE_KEY);
+
+        if (savedState) {
+          console.log("[useCanvasState] IndexedDB에서 상태 로드");
+          let maxZ = 0;
+          const itemsToLoad = savedState.items || [];
+          const itemsWithDefaults = itemsToLoad.map(
+            (item: CanvasItem, index: number) => {
+              const zIndex = item.zIndex ?? index + 1;
+              if (zIndex > maxZ) maxZ = zIndex;
+              const hydratedItem: any = { ...item, zIndex };
+              if (hydratedItem.opacity === undefined) hydratedItem.opacity = 1;
+              if (hydratedItem.borderRadius === undefined)
+                hydratedItem.borderRadius =
+                  hydratedItem.type === "shape" || hydratedItem.type === "image"
+                    ? 4
+                    : 0;
+              if (
+                (hydratedItem.type === "text" ||
+                  hydratedItem.type === "shape") &&
+                !hydratedItem.background
+              ) {
+                hydratedItem.background = { type: "solid", color: "#ffffff" };
+              }
+              return hydratedItem as CanvasItem;
             }
-            return hydratedItem as CanvasItem;
+          );
+          maxZIndex.current = maxZ + 1;
+          const connectorsToLoad = savedState.connectors || [];
+
+          // Load group metadata
+          if (savedState.groupMetadata) {
+            console.log(
+              "[useCanvasState] Loading groupMetadata:",
+              savedState.groupMetadata
+            );
+            const metadataMap = new Map<
+              string,
+              { color: string; label: string }
+            >();
+            Object.entries(savedState.groupMetadata).forEach(([key, value]) => {
+              metadataMap.set(key, value as { color: string; label: string });
+            });
+            setGroupMetadata(metadataMap);
+            console.log(
+              "[useCanvasState] Loaded groupMetadata Map:",
+              metadataMap
+            );
           }
-        );
-        maxZIndex.current = maxZ + 1;
-        const connectorsToLoad = savedState.connectors || [];
 
-        // Load group metadata
-        if (savedState.groupMetadata) {
-          console.log(
-            "[useCanvasState] Loading groupMetadata:",
-            savedState.groupMetadata
+          setItems(itemsWithDefaults);
+          setConnectors(connectorsToLoad);
+          setScale(savedState.scale || 0.3);
+          setViewOffset(
+            savedState.viewOffset || {
+              x: window.innerWidth / 2,
+              y: window.innerHeight / 2,
+            }
           );
-          const metadataMap = new Map<
-            string,
-            { color: string; label: string }
-          >();
-          Object.entries(savedState.groupMetadata).forEach(([key, value]) => {
-            metadataMap.set(key, value as { color: string; label: string });
-          });
-          setGroupMetadata(metadataMap);
-          console.log(
-            "[useCanvasState] Loaded groupMetadata Map:",
-            metadataMap
-          );
-        }
+          commitState(itemsWithDefaults, connectorsToLoad);
 
-        setItems(itemsWithDefaults);
-        setConnectors(connectorsToLoad);
-        setScale(savedState.scale || 0.3);
-        setViewOffset(
-          savedState.viewOffset || {
+          // 저장 용량 정보 표시
+          const storageInfo = await indexedDBStorage.getStorageInfo();
+          const usageMB = (storageInfo.usage / 1024 / 1024).toFixed(2);
+          const quotaMB = (storageInfo.quota / 1024 / 1024).toFixed(2);
+          console.log(`[IndexedDB] 사용량: ${usageMB}MB / ${quotaMB}MB`);
+        } else {
+          console.log("[useCanvasState] 저장된 상태 없음, 초기화");
+          setViewOffset({
             x: window.innerWidth / 2,
             y: window.innerHeight / 2,
-          }
-        );
-        commitState(itemsWithDefaults, connectorsToLoad);
+          });
+          commitState([], []);
+        }
       } catch (error) {
-        console.error("Failed to load saved state:", error);
-        initializeEmptyState();
+        console.error("[useCanvasState] 상태 로드 실패:", error);
+        setViewOffset({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+        commitState([], []);
       }
-    } else {
-      initializeEmptyState();
-    }
+    };
+
+    loadState();
   }, [commitState]);
 
   useEffect(() => {
@@ -142,25 +157,34 @@ export const useCanvasState = () => {
       return;
     }
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = window.setTimeout(() => {
-      // Convert Map to plain object for JSON serialization
-      const groupMetadataObj: Record<string, { color: string; label: string }> =
-        {};
-      groupMetadata.forEach((value, key) => {
-        groupMetadataObj[key] = value;
-      });
+    saveTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        // Convert Map to plain object for JSON serialization
+        const groupMetadataObj: Record<
+          string,
+          { color: string; label: string }
+        > = {};
+        groupMetadata.forEach((value, key) => {
+          groupMetadataObj[key] = value;
+        });
 
-      console.log("[useCanvasState] Saving groupMetadata:", groupMetadataObj);
+        const stateToSave = {
+          items, // 모든 이미지 포함
+          connectors,
+          viewOffset,
+          scale,
+          groupMetadata: groupMetadataObj,
+        };
 
-      const stateToSave = {
-        items,
-        connectors,
-        viewOffset,
-        scale,
-        groupMetadata: groupMetadataObj,
-      };
-      localStorage.setItem(C.LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
-      console.log("[useCanvasState] Saved to localStorage");
+        // IndexedDB에 저장 (용량 제한 없음)
+        await indexedDBStorage.save(C.LOCAL_STORAGE_KEY, stateToSave);
+
+        const storageInfo = await indexedDBStorage.getStorageInfo();
+        const usageMB = (storageInfo.usage / 1024 / 1024).toFixed(2);
+        console.log(`[IndexedDB] 저장 완료 (${usageMB}MB 사용 중)`);
+      } catch (error) {
+        console.error("[useCanvasState] IndexedDB 저장 실패:", error);
+      }
     }, 500);
   }, [items, connectors, viewOffset, scale, groupMetadata]);
 

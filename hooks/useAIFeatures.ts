@@ -472,7 +472,7 @@ export const useAIFeatures = (
         const aiClient = await getGeminiClient();
         const connectedItemsInfo: string[] = [];
         const imageParts: any[] = [];
-        
+
         // 스마트 탐색 설정
         const MAX_TEXT_DEPTH = 2; // 텍스트는 2단계까지
         const MAX_IMAGE_DEPTH = 5; // 이미지는 깊게 탐색
@@ -494,14 +494,20 @@ export const useAIFeatures = (
             if (!item) return;
 
             // 깊이 제한: 텍스트는 2단계, 이미지는 5단계
-            const maxDepth = item.type === 'image' ? MAX_IMAGE_DEPTH : MAX_TEXT_DEPTH;
+            const maxDepth =
+              item.type === "image" ? MAX_IMAGE_DEPTH : MAX_TEXT_DEPTH;
             if (depth > maxDepth) return;
 
             visited.add(nextId);
-            console.log(`[${depth}단계] ${currentId.substring(0, 8)} → ${nextId.substring(0, 8)} (${item.type})`);
+            console.log(
+              `[${depth}단계] ${currentId.substring(0, 8)} → ${nextId.substring(
+                0,
+                8
+              )} (${item.type})`
+            );
 
             // 정보 수집
-            const depthLabel = depth > 1 ? `${depth}단계 참조 - ` : '';
+            const depthLabel = depth > 1 ? `${depth}단계 참조 - ` : "";
             let info = `[${depthLabel}ID: ${item.id}, 유형: ${item.type}`;
 
             // 텍스트 내용
@@ -513,15 +519,17 @@ export const useAIFeatures = (
             if (item.type === "image") {
               const imageItem = item as ImageItem;
               if (imageItem.src) {
-                const base64Match = imageItem.src.match(/^data:image\/([^;]+);base64,(.+)$/);
+                const base64Match = imageItem.src.match(
+                  /^data:image\/([^;]+);base64,(.+)$/
+                );
                 if (base64Match) {
                   const format = base64Match[1];
                   const data = base64Match[2];
-                  
+
                   const supported = ["jpeg", "jpg", "png", "webp", "gif"];
                   if (supported.includes(format.toLowerCase())) {
                     imageParts.push({
-                      inlineData: { mimeType: `image/${format}`, data }
+                      inlineData: { mimeType: `image/${format}`, data },
                     });
                     info += `, 이미지 추가`;
                   } else {
@@ -538,22 +546,26 @@ export const useAIFeatures = (
               ) as ImageItem[];
 
               if (groupImages.length > 0) {
-                console.log(`[${depth}단계 그룹] ${groupImages.length}개 이미지`);
+                console.log(
+                  `[${depth}단계 그룹] ${groupImages.length}개 이미지`
+                );
                 info += `, 그룹 내 이미지: ${groupImages.length}개`;
 
                 groupImages.forEach((gImg) => {
                   if (!gImg.src || visited.has(gImg.id)) return;
                   visited.add(gImg.id);
 
-                  const match = gImg.src.match(/^data:image\/([^;]+);base64,(.+)$/);
+                  const match = gImg.src.match(
+                    /^data:image\/([^;]+);base64,(.+)$/
+                  );
                   if (match) {
                     const format = match[1];
                     const data = match[2];
                     const supported = ["jpeg", "jpg", "png", "webp", "gif"];
-                    
+
                     if (supported.includes(format.toLowerCase())) {
                       imageParts.push({
-                        inlineData: { mimeType: `image/${format}`, data }
+                        inlineData: { mimeType: `image/${format}`, data },
                       });
                     }
                   }
