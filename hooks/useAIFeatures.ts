@@ -479,67 +479,355 @@ export const useAIFeatures = (
         const MAX_TOTAL_ITEMS = 20; // 안전 장치
         const visited = new Set<string>([itemId]); // 초안 자신 제외
 
+        // 디버깅: 초안과 연결된 모든 커넥터 출력
+        const relatedConnectors = connectors.filter(
+          (c) => c.fromId === itemId || c.toId === itemId
+        );
+        console.log(
+          `\n🔍 초안 ${itemId.substring(0, 8)}의 직접 연결: ${
+            relatedConnectors.length
+          }개`
+        );
+        relatedConnectors.forEach((c) => {
+          const targetId = c.fromId === itemId ? c.toId : c.fromId;
+          const targetItem = items.find((i) => i.id === targetId);
+          console.log(
+            `  → ${targetId.substring(0, 8)}: ${targetItem?.type}${
+              targetItem?.groupId
+                ? ` (그룹: ${targetItem.groupId.substring(0, 8)})`
+                : ""
+            }`
+          );
+        });
+
+        // 디버깅: 모든 그룹 정보 출력
+        const allGroups = new Map<string, number>();
+        items.forEach((item) => {
+          if (item.groupId) {
+            allGroups.set(item.groupId, (allGroups.get(item.groupId) || 0) + 1);
+          }
+        });
+        if (allGroups.size > 0) {
+          console.log(`\n📦 전체 그룹 현황: ${allGroups.size}개 그룹`);
+          allGroups.forEach((count, groupId) => {
+            const groupItems = items.filter((i) => i.groupId === groupId);
+            const imageCount = groupItems.filter(
+              (i) => i.type === "image"
+            ).length;
+            console.log(
+              `  - ${groupId}: ${count}개 항목 (이미지 ${imageCount}개)`
+            );
+          });
+        }
+        console.log("");
+
+        // 메인 초안의 이미지 먼저 추출 (연결 탐색 전)
+        console.log(`📝 메인 초안 ${itemId.substring(0, 8)} 분석 중...`);
+        console.log(`  HTML 길이: ${mainItem.content.length} 문자`);
+        console.log(
+          `  HTML 샘플 (처음 500자):\n${mainItem.content.substring(0, 500)}`
+        );
+
+        // HTML에서 img 태그 찾기
+        const imgTags = mainItem.content.match(/<img[^>]*>/g);
+        if (imgTags) {
+          console.log(`  <img> 태그 발견: ${imgTags.length}개`);
+          imgTags.forEach((tag, idx) => {
+            console.log(`  [${idx + 1}] ${tag.substring(0, 100)}...`);
+          });
+        } else {
+          console.log(`  <img> 태그 없음`);
+        }
+        const mainImgRegex =
+          /<img[^>]+src="(data:image\/([^;]+);base64,([^"]+))"/g;
+        let mainMatch;
+        let mainEmbeddedImageCount = 0;
+        let mainFilteredCount = 0;
+
+        while ((mainMatch = mainImgRegex.exec(mainItem.content)) !== null) {
+          const format = mainMatch[2];
+          const data = mainMatch[3];
+          const supported = ["jpeg", "jpg", "png", "webp", "gif"];
+
+          if (supported.includes(format.toLowerCase())) {
+            imageParts.push({
+              inlineData: { mimeType: `image/${format}`, data },
+            });
+            mainEmbeddedImageCount++;
+          } else {
+            console.log(`  - 미지원 형식 필터링: ${format}`);
+            mainFilteredCount++;
+          }
+        }
+
+        if (mainEmbeddedImageCount > 0) {
+          console.log(`✓ 메인 초안 내 이미지 ${mainEmbeddedImageCount}개 추출`);
+        } else if (mainFilteredCount > 0) {
+          console.log(
+            `  (이미지 ${mainFilteredCount}개 있으나 모두 미지원 형식)`
+          );
+        } else {
+          console.log(
+            `  (이미지 ${
+              imgTags ? imgTags.length : 0
+            }개 있으나 base64 형식이 아니거나 정규식 불일치)`
+          );
+        }
+        console.log("");
+
         // 재귀 탐색 함수
         const exploreConnections = (currentId: string, depth: number) => {
           if (visited.size >= MAX_TOTAL_ITEMS) return;
 
           connectors.forEach((conn) => {
             let nextId: string | null = null;
-            if (conn.fromId === currentId) nextId = conn.toId;
-            else if (conn.toId === currentId) nextId = conn.fromId;
+            let isGroupConnection = false;
 
-            if (!nextId || visited.has(nextId)) return;
+            if (conn.fromId === currentId) {
+              nextId = conn.toId;
+            } else if (conn.toId === currentId) {
+              nextId = conn.fromId;
+            }
 
-            const item = items.find((i) => i.id === nextId);
-            if (!item) return;
+            if (!nextId) return;
 
-            // 깊이 제한: 텍스트는 2단계, 이미지는 5단계
-            const maxDepth =
-              item.type === "image" ? MAX_IMAGE_DEPTH : MAX_TEXT_DEPTH;
-            if (depth > maxDepth) return;
+            // nextId가 실제 항목인지 확인
+            let item = items.find((i) => i.id === nextId);
+
+            // 항목이 없으면 그룹 ID일 수 있음
+            if (!item) {
+              console.log(`  🔍 ${nextId} 항목 없음 - 그룹 ID 확인 중...`);
+
+              // "group-" 접두사 제거
+              const groupIdToCheck = nextId.startsWith("group-")
+                ? nextId.substring(6)
+                : nextId;
+
+              // 그룹에 속한 항목들 찾기
+              const groupItems = items.filter(
+                (i) => i.groupId === groupIdToCheck
+              );
+              console.log(
+                `  🔍 그룹 ${groupIdToCheck}에 속한 항목: ${groupItems.length}개`
+              );
+
+              if (groupItems.length > 0) {
+                isGroupConnection = true;
+                console.log(
+                  `[${depth}단계 그룹] ${currentId.substring(
+                    0,
+                    8
+                  )} → ${groupIdToCheck.substring(0, 8)} (그룹, ${
+                    groupItems.length
+                  }개 항목)`
+                );
+
+                // 그룹의 모든 이미지 수집
+                const groupImages = groupItems.filter(
+                  (i) => i.type === "image"
+                ) as ImageItem[];
+                console.log(`  🔍 그룹 내 이미지: ${groupImages.length}개`);
+
+                if (groupImages.length > 0) {
+                  console.log(
+                    `  └─ 그룹 이미지 ${groupImages.length}개 수집 중...`
+                  );
+
+                  let addedCount = 0;
+                  groupImages.forEach((gImg, idx) => {
+                    if (!gImg.src) {
+                      console.log(
+                        `     [${idx + 1}] ${gImg.id.substring(
+                          0,
+                          8
+                        )} - src 없음`
+                      );
+                      return;
+                    }
+                    if (visited.has(gImg.id)) {
+                      console.log(
+                        `     [${idx + 1}] ${gImg.id.substring(
+                          0,
+                          8
+                        )} - 이미 방문`
+                      );
+                      return;
+                    }
+
+                    visited.add(gImg.id);
+
+                    const match = gImg.src.match(
+                      /^data:image\/([^;]+);base64,(.+)$/
+                    );
+                    if (match) {
+                      const format = match[1];
+                      const data = match[2];
+                      const supported = ["jpeg", "jpg", "png", "webp", "gif"];
+
+                      if (supported.includes(format.toLowerCase())) {
+                        imageParts.push({
+                          inlineData: { mimeType: `image/${format}`, data },
+                        });
+                        addedCount++;
+                        console.log(
+                          `     [${idx + 1}] ${gImg.id.substring(
+                            0,
+                            8
+                          )} - ${format} 추가 ✓`
+                        );
+                      } else {
+                        console.log(
+                          `     [${idx + 1}] ${gImg.id.substring(
+                            0,
+                            8
+                          )} - 미지원 형식: ${format}`
+                        );
+                      }
+                    } else {
+                      console.log(
+                        `     [${idx + 1}] ${gImg.id.substring(
+                          0,
+                          8
+                        )} - base64 형식 아님`
+                      );
+                    }
+                  });
+                  console.log(`  └─ 최종 ${addedCount}개 이미지 추가됨`);
+                }
+              } else {
+                console.log(`  ⚠️ ${nextId}는 항목도 그룹도 아님`);
+              }
+              return; // 그룹 처리 완료, 다음 커넥터로
+            }
+
+            if (visited.has(nextId)) return;
 
             visited.add(nextId);
             console.log(
               `[${depth}단계] ${currentId.substring(0, 8)} → ${nextId.substring(
                 0,
                 8
-              )} (${item.type})`
+              )} (${item.type}${
+                item.groupId ? `, 그룹ID: ${item.groupId.substring(0, 8)}` : ""
+              })`
             );
 
-            // 정보 수집
-            const depthLabel = depth > 1 ? `${depth}단계 참조 - ` : "";
-            let info = `[${depthLabel}ID: ${item.id}, 유형: ${item.type}`;
-
-            // 텍스트 내용
-            if (item.type === "text" || item.type === "shape") {
-              info += `, 내용: "${htmlToText(item.content)}"`;
+            // 디버깅: 현재 항목이 그룹에 속해 있으면 그룹 정보 출력
+            if (item.groupId) {
+              const sameGroupItems = items.filter(
+                (i) => i.groupId === item.groupId
+              );
+              const sameGroupImages = sameGroupItems.filter(
+                (i) => i.type === "image"
+              );
+              console.log(
+                `  ℹ️ 이 항목은 그룹에 속함 - 같은 그룹 항목: ${sameGroupItems.length}개 (이미지 ${sameGroupImages.length}개)`
+              );
             }
 
-            // 이미지 수집
-            if (item.type === "image") {
-              const imageItem = item as ImageItem;
-              if (imageItem.src) {
-                const base64Match = imageItem.src.match(
-                  /^data:image\/([^;]+);base64,(.+)$/
+            // 디버깅: 이 항목의 추가 연결 확인
+            const itemConnections = connectors.filter(
+              (c) =>
+                (c.fromId === nextId || c.toId === nextId) &&
+                c.fromId !== currentId &&
+                c.toId !== currentId
+            );
+            if (itemConnections.length > 0) {
+              console.log(
+                `  └─ ${nextId.substring(0, 8)}의 추가 연결: ${
+                  itemConnections.length
+                }개`
+              );
+              itemConnections.forEach((ic) => {
+                const furtherId = ic.fromId === nextId ? ic.toId : ic.fromId;
+                const furtherItem = items.find((i) => i.id === furtherId);
+                console.log(
+                  `     → ${furtherId.substring(0, 8)}: ${
+                    furtherItem
+                      ? `${furtherItem.type}${
+                          furtherItem.groupId
+                            ? ` (그룹: ${furtherItem.groupId.substring(0, 8)})`
+                            : ""
+                        }${visited.has(furtherId) ? " [이미 방문]" : ""}`
+                      : "항목 없음"
+                  }`
                 );
-                if (base64Match) {
-                  const format = base64Match[1];
-                  const data = base64Match[2];
+              });
+            }
 
+            // 정보 수집 여부 결정 (깊이 제한)
+            const shouldCollectInfo =
+              ((item.type === "text" || item.type === "shape") &&
+                depth <= MAX_TEXT_DEPTH) ||
+              (item.type === "image" && depth <= MAX_IMAGE_DEPTH);
+
+            if (shouldCollectInfo) {
+              // 정보 수집
+              const depthLabel = depth > 1 ? `${depth}단계 참조 - ` : "";
+              let info = `[${depthLabel}ID: ${item.id}, 유형: ${item.type}`;
+
+              // 텍스트 내용
+              if (item.type === "text" || item.type === "shape") {
+                info += `, 내용: "${htmlToText(item.content)}"`;
+
+                // 텍스트 내 이미지 추출 (Tiptap ResizableImage)
+                const imgRegex =
+                  /<img[^>]+src="(data:image\/([^;]+);base64,([^"]+))"/g;
+                let match;
+                let embeddedImageCount = 0;
+
+                while ((match = imgRegex.exec(item.content)) !== null) {
+                  const fullSrc = match[1];
+                  const format = match[2];
+                  const data = match[3];
                   const supported = ["jpeg", "jpg", "png", "webp", "gif"];
+
                   if (supported.includes(format.toLowerCase())) {
                     imageParts.push({
                       inlineData: { mimeType: `image/${format}`, data },
                     });
-                    info += `, 이미지 추가`;
-                  } else {
-                    info += `, 미지원 형식: ${format}`;
+                    embeddedImageCount++;
+                  }
+                }
+
+                if (embeddedImageCount > 0) {
+                  console.log(
+                    `  ℹ️ 텍스트 내 삽입된 이미지 ${embeddedImageCount}개 추출`
+                  );
+                  info += `, 삽입 이미지: ${embeddedImageCount}개`;
+                }
+              }
+
+              // 이미지 수집
+              if (item.type === "image") {
+                const imageItem = item as ImageItem;
+                if (imageItem.src) {
+                  const base64Match = imageItem.src.match(
+                    /^data:image\/([^;]+);base64,(.+)$/
+                  );
+                  if (base64Match) {
+                    const format = base64Match[1];
+                    const data = base64Match[2];
+
+                    const supported = ["jpeg", "jpg", "png", "webp", "gif"];
+                    if (supported.includes(format.toLowerCase())) {
+                      imageParts.push({
+                        inlineData: { mimeType: `image/${format}`, data },
+                      });
+                      info += `, 이미지 추가`;
+                    } else {
+                      info += `, 미지원 형식: ${format}`;
+                    }
                   }
                 }
               }
+
+              if (conn.label) info += `, 관계: "${conn.label}"`;
+              info += "]";
+              connectedItemsInfo.push(info);
             }
 
-            // 그룹 이미지 수집
+            // 그룹 이미지는 항상 수집 (깊이 무관, 정보 수집 여부와 무관)
             if (item.groupId) {
               const groupImages = items.filter(
                 (i) => i.groupId === item.groupId && i.type === "image"
@@ -547,9 +835,10 @@ export const useAIFeatures = (
 
               if (groupImages.length > 0) {
                 console.log(
-                  `[${depth}단계 그룹] ${groupImages.length}개 이미지`
+                  `[${depth}단계 그룹] ${item.groupId.substring(0, 8)} - ${
+                    groupImages.length
+                  }개 이미지`
                 );
-                info += `, 그룹 내 이미지: ${groupImages.length}개`;
 
                 groupImages.forEach((gImg) => {
                   if (!gImg.src || visited.has(gImg.id)) return;
@@ -572,10 +861,6 @@ export const useAIFeatures = (
                 });
               }
             }
-
-            if (conn.label) info += `, 관계: "${conn.label}"`;
-            info += "]";
-            connectedItemsInfo.push(info);
 
             // 재귀 탐색 계속
             exploreConnections(nextId, depth + 1);
@@ -624,7 +909,66 @@ ${
             imageParts.length > 0 ? "gemini-2.5-flash" : "gemini-2.5-flash", // Flash 모델도 멀티모달 지원
           contents: contents,
         });
-        const updatedContent = textToHtml(response.text);
+        let updatedContent = textToHtml(response.text);
+
+        // Gemini가 삽입한 이미지 파일명을 실제 base64 이미지로 교체
+        const imageRefRegex =
+          /<img[^>]+src=["']([^"']+\.(jpeg|jpg|png|webp|gif))["'][^>]*>/gi;
+        const imageMatches = Array.from(updatedContent.matchAll(imageRefRegex));
+
+        if (imageMatches.length > 0) {
+          console.log(
+            `🎨 ${imageMatches.length}개의 이미지 참조 발견 - 실제 이미지 생성 중...`
+          );
+
+          for (const match of imageMatches) {
+            const fullImgTag = match[0];
+            const filename = match[1];
+
+            // alt 텍스트를 프롬프트로 사용
+            const altMatch = fullImgTag.match(/alt=["']([^"']+)["']/i);
+            const prompt = altMatch
+              ? altMatch[1]
+              : filename.replace(/\.(jpeg|jpg|png|webp|gif)$/i, "");
+
+            try {
+              console.log(`  🖼️ "${prompt}" 이미지 생성 중...`);
+
+              const imageGenerationResponse = await handleApiCall(
+                aiClient.models.generateImages,
+                {
+                  model: "imagen-4.0-generate-001",
+                  prompt: prompt,
+                  config: {
+                    numberOfImages: 1,
+                    outputMimeType: "image/jpeg",
+                    aspectRatio: "1:1",
+                  },
+                }
+              );
+
+              const base64ImageBytes: string | undefined =
+                imageGenerationResponse?.generatedImages?.[0]?.image
+                  ?.imageBytes;
+
+              if (base64ImageBytes) {
+                const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+                // 원본 img 태그를 base64 이미지로 교체
+                updatedContent = updatedContent.replace(
+                  fullImgTag,
+                  `<img src="${imageUrl}" alt="${prompt}">`
+                );
+                console.log(`    ✓ "${prompt}" 이미지 생성 완료`);
+              } else {
+                console.log(
+                  `    ✗ "${prompt}" 이미지 생성 실패 - base64 데이터 없음`
+                );
+              }
+            } catch (imgError) {
+              console.error(`    ✗ "${prompt}" 이미지 생성 실패:`, imgError);
+            }
+          }
+        }
 
         const newItems = items.map((i) =>
           i.id === itemId ? { ...i, content: updatedContent } : i
