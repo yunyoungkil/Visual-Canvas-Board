@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
+import MonacoEditor from "@monaco-editor/react";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
 
@@ -30,6 +31,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [tableGridCols, setTableGridCols] = useState(0);
   const [isBgColorMenuOpen, setIsBgColorMenuOpen] = useState(false);
   const [isHrMenuOpen, setIsHrMenuOpen] = useState(false);
+  const [isHtmlEditMode, setIsHtmlEditMode] = useState(false);
+  const [htmlContent, setHtmlContent] = useState("");
   const [bgColor, setBgColor] = useState("#ffff00");
   const [bgOpacity, setBgOpacity] = useState(50);
   const [hrSpacing, setHrSpacing] = useState(50);
@@ -285,6 +288,47 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isHrMenuOpen]);
+
+  // HTML 편집 모드 핸들러
+  const openHtmlEditMode = useCallback(() => {
+    const currentHtml = editor.getHTML();
+    setHtmlContent(currentHtml);
+    setIsHtmlEditMode(true);
+  }, [editor]);
+
+  const closeHtmlEditMode = useCallback(() => {
+    setIsHtmlEditMode(false);
+    setHtmlContent("");
+  }, []);
+
+  const saveHtmlContent = useCallback(() => {
+    try {
+      // HTML 콘텐츠 유효성 검사 (기본적인 체크)
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = htmlContent;
+
+      // Tiptap 에디터에 HTML 설정
+      editor.commands.setContent(htmlContent);
+      closeHtmlEditMode();
+    } catch (error) {
+      console.error("HTML 파싱 오류:", error);
+      alert("유효하지 않은 HTML입니다. 다시 확인해주세요.");
+    }
+  }, [editor, htmlContent, closeHtmlEditMode]);
+
+  // HTML 편집 모드에서 ESC 키 처리
+  useEffect(() => {
+    if (!isHtmlEditMode) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeHtmlEditMode();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isHtmlEditMode, closeHtmlEditMode]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -657,7 +701,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 onMouseDown={(e) => e.preventDefault()}
               >
                 <div className="mb-2">
-                  <label htmlFor="bg-color-picker" className="text-xs text-gray-600 mb-1 block">
+                  <label
+                    htmlFor="bg-color-picker"
+                    className="text-xs text-gray-600 mb-1 block"
+                  >
                     배경색
                   </label>
                   <input
@@ -670,7 +717,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   />
                 </div>
                 <div className="mb-3">
-                  <label htmlFor="bg-opacity-slider" className="text-xs text-gray-600 mb-1 block">
+                  <label
+                    htmlFor="bg-opacity-slider"
+                    className="text-xs text-gray-600 mb-1 block"
+                  >
                     투명도: {bgOpacity}%
                   </label>
                   <input
@@ -1093,7 +1143,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 onMouseDown={(e) => e.preventDefault()}
               >
                 <div className="mb-3">
-                  <label htmlFor="hr-spacing-slider" className="text-xs text-gray-600 mb-1 block">
+                  <label
+                    htmlFor="hr-spacing-slider"
+                    className="text-xs text-gray-600 mb-1 block"
+                  >
                     여백 크기: {hrSpacing}px
                   </label>
                   <input
@@ -1223,6 +1276,16 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             <Icon name="subscript" className="w-4 h-4 text-gray-700" />
           </ToolbarButton>
           <div className="w-px h-5 bg-gray-200 mx-1"></div>
+          <ToolbarButton
+            onClick={openHtmlEditMode}
+            isActive={false}
+            title="HTML 소스 편집"
+          >
+            <span className="text-xs font-mono font-bold text-gray-700">
+              &lt;/&gt;
+            </span>
+          </ToolbarButton>
+          <div className="w-px h-5 bg-gray-200 mx-1"></div>
           {(["left", "center", "right", "justify"] as const).map((align) => (
             <ToolbarButton
               key={align}
@@ -1249,6 +1312,146 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             </ToolbarButton>
           ))}
         </>
+      )}
+
+      {/* HTML 편집 모달 */}
+      {isHtmlEditMode && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+          onClick={closeHtmlEditMode}
+          onWheel={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl flex flex-col"
+            style={{
+              width: "95vw",
+              height: "95vh",
+              maxWidth: "1400px",
+              maxHeight: "900px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="text-xl font-mono font-bold text-blue-600">
+                  &lt;/&gt;
+                </span>
+                <h2 className="text-lg font-semibold text-gray-800">
+                  HTML 소스 편집
+                </h2>
+                <span className="text-xs text-gray-500 ml-2">
+                  (Monaco Editor - VS Code와 동일한 편집 환경)
+                </span>
+              </div>
+              <button
+                onClick={closeHtmlEditMode}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="닫기 (ESC)"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Monaco Editor 영역 */}
+            <div className="flex-1 overflow-hidden border-b border-gray-200">
+              <MonacoEditor
+                height="100%"
+                language="html"
+                value={htmlContent}
+                onChange={(value) => setHtmlContent(value || "")}
+                theme="vs"
+                options={{
+                  minimap: { enabled: true },
+                  fontSize: 14,
+                  lineNumbers: "on",
+                  roundedSelection: true,
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                  insertSpaces: true,
+                  wordWrap: "on",
+                  formatOnPaste: true,
+                  formatOnType: true,
+                  autoIndent: "full",
+                  folding: true,
+                  foldingStrategy: "indentation",
+                  showFoldingControls: "always",
+                  bracketPairColorization: {
+                    enabled: true,
+                  },
+                  guides: {
+                    indentation: true,
+                    bracketPairs: true,
+                  },
+                  suggest: {
+                    showKeywords: true,
+                    showSnippets: true,
+                  },
+                  quickSuggestions: {
+                    other: true,
+                    comments: false,
+                    strings: true,
+                  },
+                }}
+              />
+            </div>
+
+            {/* 푸터 */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 flex-shrink-0">
+              <div className="flex flex-col gap-1">
+                <div className="text-sm text-gray-700 font-medium">
+                  💡 편집 도움말
+                </div>
+                <div className="text-xs text-gray-500">
+                  •{" "}
+                  <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">
+                    Ctrl+Shift+F
+                  </kbd>
+                  : 자동 포맷팅 •{" "}
+                  <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">
+                    Ctrl+F
+                  </kbd>
+                  : 찾기 •{" "}
+                  <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">
+                    Ctrl+/
+                  </kbd>
+                  : 주석 •{" "}
+                  <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">
+                    Alt+클릭
+                  </kbd>
+                  : 다중 커서
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={closeHtmlEditMode}
+                  className="px-5 py-2.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={saveHtmlContent}
+                  className="px-5 py-2.5 text-sm text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors font-medium shadow-sm"
+                >
+                  저장하고 적용
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -418,6 +418,85 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = React.memo(
               className="w-full h-full object-cover pointer-events-none"
               style={{ opacity: item.opacity ?? 1 }}
               draggable={false}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // 우클릭 메뉴 생성
+                const menu = document.createElement("div");
+                menu.style.cssText = `
+                  position: fixed;
+                  left: ${e.clientX}px;
+                  top: ${e.clientY}px;
+                  background: white;
+                  border: 1px solid #ccc;
+                  border-radius: 4px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                  z-index: 10000;
+                  min-width: 150px;
+                `;
+
+                const copyOption = document.createElement("div");
+                copyOption.textContent = "📋 이미지 복사";
+                copyOption.style.cssText = `
+                  padding: 8px 12px;
+                  cursor: pointer;
+                `;
+                copyOption.onmouseover = () =>
+                  (copyOption.style.background = "#f0f0f0");
+                copyOption.onmouseout = () =>
+                  (copyOption.style.background = "white");
+                copyOption.onclick = async () => {
+                  try {
+                    const response = await fetch(item.src);
+                    const blob = await response.blob();
+                    await navigator.clipboard.write([
+                      new ClipboardItem({ [blob.type]: blob }),
+                    ]);
+                    console.log("✓ 이미지가 클립보드에 복사되었습니다");
+                  } catch (err) {
+                    console.error("이미지 복사 실패:", err);
+                  }
+                  document.body.removeChild(menu);
+                };
+
+                const downloadOption = document.createElement("div");
+                downloadOption.textContent = "💾 이미지 저장";
+                downloadOption.style.cssText = `
+                  padding: 8px 12px;
+                  cursor: pointer;
+                  border-top: 1px solid #eee;
+                `;
+                downloadOption.onmouseover = () =>
+                  (downloadOption.style.background = "#f0f0f0");
+                downloadOption.onmouseout = () =>
+                  (downloadOption.style.background = "white");
+                downloadOption.onclick = () => {
+                  const link = document.createElement("a");
+                  link.href = item.src;
+                  link.download = `image_${item.id.substring(0, 8)}.jpeg`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  document.body.removeChild(menu);
+                  console.log("✓ 이미지 다운로드 시작");
+                };
+
+                menu.appendChild(copyOption);
+                menu.appendChild(downloadOption);
+                document.body.appendChild(menu);
+
+                const closeMenu = () => {
+                  if (document.body.contains(menu)) {
+                    document.body.removeChild(menu);
+                  }
+                  document.removeEventListener("click", closeMenu);
+                };
+
+                setTimeout(() => {
+                  document.addEventListener("click", closeMenu);
+                }, 0);
+              }}
             />
           )}
 

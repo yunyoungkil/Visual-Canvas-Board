@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "^0.15.0",
+    "@monaco-editor/react": "^4.7.0",
     "@tiptap/extension-bubble-menu": "^2.10.3",
     "@tiptap/extension-color": "^2.10.3",
     "@tiptap/extension-font-family": "^2.10.3",

@@ -71,6 +71,125 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
     [editor, getPos]
   );
 
+  // 이미지 복사 기능
+  const handleCopyImage = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const src = node.attrs.src;
+      if (!src) return;
+
+      try {
+        // base64 이미지를 Blob으로 변환
+        const response = await fetch(src);
+        const blob = await response.blob();
+
+        // 클립보드에 복사
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [blob.type]: blob,
+          }),
+        ]);
+
+        console.log("✓ 이미지가 클립보드에 복사되었습니다");
+      } catch (err) {
+        console.error("이미지 복사 실패:", err);
+      }
+    },
+    [node.attrs.src]
+  );
+
+  // 이미지 다운로드 기능
+  const handleDownloadImage = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const src = node.attrs.src;
+      const alt = node.attrs.alt || "image";
+      if (!src) return;
+
+      const link = document.createElement("a");
+      link.href = src;
+      link.download = `${alt.replace(/[^a-zA-Z0-9가-힣]/g, "_")}.jpeg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log("✓ 이미지 다운로드 시작");
+    },
+    [node.attrs.src, node.attrs.alt]
+  );
+
+  // 우클릭 메뉴 핸들러
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // 기본 컨텍스트 메뉴 대신 복사/다운로드 옵션 표시
+      const menu = document.createElement("div");
+      menu.style.cssText = `
+        position: fixed;
+        left: ${e.clientX}px;
+        top: ${e.clientY}px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 10000;
+        min-width: 150px;
+      `;
+
+      const copyOption = document.createElement("div");
+      copyOption.textContent = "📋 이미지 복사";
+      copyOption.style.cssText = `
+        padding: 8px 12px;
+        cursor: pointer;
+        &:hover { background: #f0f0f0; }
+      `;
+      copyOption.onmouseover = () => (copyOption.style.background = "#f0f0f0");
+      copyOption.onmouseout = () => (copyOption.style.background = "white");
+      copyOption.onclick = (evt) => {
+        handleCopyImage(evt as any);
+        document.body.removeChild(menu);
+      };
+
+      const downloadOption = document.createElement("div");
+      downloadOption.textContent = "💾 이미지 저장";
+      downloadOption.style.cssText = `
+        padding: 8px 12px;
+        cursor: pointer;
+        border-top: 1px solid #eee;
+      `;
+      downloadOption.onmouseover = () =>
+        (downloadOption.style.background = "#f0f0f0");
+      downloadOption.onmouseout = () =>
+        (downloadOption.style.background = "white");
+      downloadOption.onclick = (evt) => {
+        handleDownloadImage(evt as any);
+        document.body.removeChild(menu);
+      };
+
+      menu.appendChild(copyOption);
+      menu.appendChild(downloadOption);
+      document.body.appendChild(menu);
+
+      const closeMenu = () => {
+        if (document.body.contains(menu)) {
+          document.body.removeChild(menu);
+        }
+        document.removeEventListener("click", closeMenu);
+      };
+
+      setTimeout(() => {
+        document.addEventListener("click", closeMenu);
+      }, 0);
+    },
+    [handleCopyImage, handleDownloadImage]
+  );
+
   const handleResizeStart = useCallback(
     (e: React.MouseEvent, corner: string) => {
       e.preventDefault();
@@ -248,6 +367,7 @@ const ResizableImageComponent: React.FC<ResizableImageComponentProps> = ({
             // Prevent any parent drag handlers
             e.stopPropagation();
           }}
+          onContextMenu={handleContextMenu}
         />
 
         {/* Only show resize handles when editor is editable (editing mode) */}

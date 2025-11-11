@@ -881,21 +881,37 @@ export const useAIFeatures = (
 - "이미지 프롬프트 N개 생성"이라면 → N개의 구체적인 이미지 생성 프롬프트를 리스트로 추가
 - "요약"이라면 → 연결된 내용을 요약하여 통합
 - "확장"이라면 → 연결된 내용을 바탕으로 상세히 확장
-- 이미지가 첨부되어 있다면 → 이미지 내용을 분석하여 관련 정보 추가
+- 이미지가 첨부되어 있다면 → 이미지 내용을 본문에 반영
 - 기타 요청사항이 있다면 그대로 수행
 
 ${
   imageParts.length > 0
-    ? `\n첨부된 이미지 ${imageParts.length}개를 분석하여 관련 내용을 풍부하게 만들어주세요.\n`
-    : ""
+    ? `\n**첨부된 이미지 ${imageParts.length}개를 분석**하여:\n- 이미지 내용을 본문에 반영\n- "이미지 골라줘", "이미지 선택해줘" 등의 요청이 있다면 → 첨부된 이미지 중 가장 적합한 것을 선택하여 <img src="EXISTING_IMAGE_N" alt="선택한 이미지 설명"> 형식으로 삽입 (EXISTING_IMAGE_1부터 EXISTING_IMAGE_${imageParts.length}까지 사용 가능)\n- "이미지 생성해줘", "이미지 만들어줘" 등의 요청이 있다면 → <img src="new_image_description.jpeg" alt="구체적인 생성 프롬프트"> 형식으로 새 이미지 태그 삽입\n`
+    : '\n**이미지 생성 요청이 있다면**: <img src="descriptive_filename.jpeg" alt="구체적인 생성 프롬프트"> 형식으로 삽입\n'
 }
 연결된 항목들의 정보와 관계 라벨의 지시사항을 모두 반영하여 메인 초안을 업데이트해주세요.
 
+**이미지 삽입 규칙**:
+1. **기존 이미지 선택** ("골라줘", "선택해줘"):
+   - 형식: <img src="EXISTING_IMAGE_N" alt="이미지 설명">
+   - N은 1부터 ${imageParts.length}까지
+   - 각 이미지는 위에서 분석한 첨부 이미지 중 하나
+   
+2. **새 이미지 생성** ("만들어줘", "생성해줘"):
+   - 형식: <img src="descriptive_filename.jpeg" alt="매우 구체적한 생성 프롬프트">
+   - alt에는 Imagen 4.0으로 생성할 상세한 프롬프트 작성
+
 응답 형식:
-- 마크다운 형식 사용 (제목: #, ##, 강조: **굵게**, 리스트: -, 1.)
+- 마크다운 형식 사용
+- **제목 규칙**: 
+  - 최상위 제목(문서 제목)만 # (H1) 사용
+  - 모든 섹션 제목은 ## (H2) 이하 사용
+  - 하위 제목: ### (H3), #### (H4) 순서대로 사용
+- 강조: **굵게**, *이탤릭*, ~~취소선~~ 사용
+- 리스트: -, 1. 사용
 - 각 문단 사이에 빈 줄 삽입
 - 자연스럽고 논리적인 문장으로 작성
-- 이미지 프롬프트는 명확하고 구체적으로 작성
+- 이미지는 본문의 적절한 위치에 HTML <img> 태그로 삽입
 수정된 전체 초안만을 응답으로 반환하세요.`;
 
         // 멀티모달 콘텐츠 구성: 텍스트 + 이미지
@@ -911,61 +927,90 @@ ${
         });
         let updatedContent = textToHtml(response.text);
 
-        // Gemini가 삽입한 이미지 파일명을 실제 base64 이미지로 교체
-        const imageRefRegex =
-          /<img[^>]+src=["']([^"']+\.(jpeg|jpg|png|webp|gif))["'][^>]*>/gi;
+        // Gemini가 삽입한 이미지 참조 처리
+        const imageRefRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
         const imageMatches = Array.from(updatedContent.matchAll(imageRefRegex));
 
         if (imageMatches.length > 0) {
           console.log(
-            `🎨 ${imageMatches.length}개의 이미지 참조 발견 - 실제 이미지 생성 중...`
+            `🎨 ${imageMatches.length}개의 이미지 참조 발견 - 처리 중...`
           );
 
           for (const match of imageMatches) {
             const fullImgTag = match[0];
-            const filename = match[1];
+            const src = match[1];
 
-            // alt 텍스트를 프롬프트로 사용
-            const altMatch = fullImgTag.match(/alt=["']([^"']+)["']/i);
-            const prompt = altMatch
-              ? altMatch[1]
-              : filename.replace(/\.(jpeg|jpg|png|webp|gif)$/i, "");
+            // EXISTING_IMAGE_N 패턴 확인 (기존 이미지 선택)
+            const existingImageMatch = src.match(/^EXISTING_IMAGE_(\d+)$/i);
 
-            try {
-              console.log(`  🖼️ "${prompt}" 이미지 생성 중...`);
+            if (existingImageMatch) {
+              const imageIndex = parseInt(existingImageMatch[1]) - 1; // 1-based to 0-based
 
-              const imageGenerationResponse = await handleApiCall(
-                aiClient.models.generateImages,
-                {
-                  model: "imagen-4.0-generate-001",
-                  prompt: prompt,
-                  config: {
-                    numberOfImages: 1,
-                    outputMimeType: "image/jpeg",
-                    aspectRatio: "1:1",
-                  },
-                }
-              );
+              if (imageIndex >= 0 && imageIndex < imageParts.length) {
+                const selectedImage = imageParts[imageIndex];
+                const base64Data = selectedImage.inlineData.data;
+                const mimeType = selectedImage.inlineData.mimeType;
+                const imageUrl = `data:${mimeType};base64,${base64Data}`;
 
-              const base64ImageBytes: string | undefined =
-                imageGenerationResponse?.generatedImages?.[0]?.image
-                  ?.imageBytes;
+                const altMatch = fullImgTag.match(/alt=["']([^"']+)["']/i);
+                const alt = altMatch
+                  ? altMatch[1]
+                  : `선택된 이미지 ${imageIndex + 1}`;
 
-              if (base64ImageBytes) {
-                const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-                // 원본 img 태그를 base64 이미지로 교체
                 updatedContent = updatedContent.replace(
                   fullImgTag,
-                  `<img src="${imageUrl}" alt="${prompt}">`
+                  `<img src="${imageUrl}" alt="${alt}">`
                 );
-                console.log(`    ✓ "${prompt}" 이미지 생성 완료`);
+                console.log(
+                  `  ✓ 기존 이미지 ${imageIndex + 1}번 삽입: "${alt}"`
+                );
               } else {
                 console.log(
-                  `    ✗ "${prompt}" 이미지 생성 실패 - base64 데이터 없음`
+                  `  ⚠️ EXISTING_IMAGE_${imageIndex + 1} - 범위 초과 (최대: ${
+                    imageParts.length
+                  })`
                 );
               }
-            } catch (imgError) {
-              console.error(`    ✗ "${prompt}" 이미지 생성 실패:`, imgError);
+            } else if (src.match(/\.(jpeg|jpg|png|webp|gif)$/i)) {
+              // 새 이미지 생성 필요
+              const altMatch = fullImgTag.match(/alt=["']([^"']+)["']/i);
+              const prompt = altMatch
+                ? altMatch[1]
+                : src.replace(/\.(jpeg|jpg|png|webp|gif)$/i, "");
+
+              try {
+                console.log(`  🖼️ 새 이미지 생성: "${prompt}"`);
+
+                const imageGenerationResponse = await handleApiCall(
+                  aiClient.models.generateImages,
+                  {
+                    model: "imagen-4.0-generate-001",
+                    prompt: prompt,
+                    config: {
+                      numberOfImages: 1,
+                      outputMimeType: "image/jpeg",
+                      aspectRatio: "1:1",
+                    },
+                  }
+                );
+
+                const base64ImageBytes: string | undefined =
+                  imageGenerationResponse?.generatedImages?.[0]?.image
+                    ?.imageBytes;
+
+                if (base64ImageBytes) {
+                  const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+                  updatedContent = updatedContent.replace(
+                    fullImgTag,
+                    `<img src="${imageUrl}" alt="${prompt}">`
+                  );
+                  console.log(`    ✓ 이미지 생성 완료`);
+                } else {
+                  console.log(`    ✗ 이미지 생성 실패 - base64 데이터 없음`);
+                }
+              } catch (imgError) {
+                console.error(`    ✗ 이미지 생성 실패:`, imgError);
+              }
             }
           }
         }
