@@ -115,6 +115,21 @@ export interface ChatMessage {
   content: string;
 }
 
+// Firebase 관련 타입
+export type CardCategory = "scrap" | "idea" | "planning";
+
+export interface SavedCanvas {
+  id: string;
+  title: string;
+  category: CardCategory;
+  thumbnail?: string; // Base64 썸네일 이미지
+  items: CanvasItem[];
+  connectors: Connector[];
+  createdAt: number;
+  updatedAt: number;
+  description?: string;
+}
+
 export interface TiptapToolbarState {
   isVisible: boolean;
   editor: Editor;

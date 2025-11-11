@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import Icon from "./Icon";
-import type { ShapeType } from "../types";
+import type { ShapeType, CardCategory } from "../types";
 
 interface LeftToolbarProps {
   isPanModeActive: boolean;
@@ -22,6 +22,7 @@ interface LeftToolbarProps {
   isGeneratingAIContent: boolean;
   className?: string;
   selectedItemsCount?: number;
+  onToggleCardListPanel?: (category: CardCategory | null) => void;
 }
 
 const LeftToolbar: React.FC<LeftToolbarProps> = ({
@@ -44,9 +45,11 @@ const LeftToolbar: React.FC<LeftToolbarProps> = ({
   isGeneratingAIContent,
   className,
   selectedItemsCount = 0,
+  onToggleCardListPanel,
 }) => {
   const [isShapeDropdownOpen, setIsShapeDropdownOpen] = useState(false);
   const [isAiDropdownOpen, setIsAiDropdownOpen] = useState(false);
+  const [activeCardCategory, setActiveCardCategory] = useState<CardCategory | null>(null);
   const shapeDropdownRef = useRef<HTMLDivElement>(null);
   const aiDropdownRef = useRef<HTMLDivElement>(null);
   const shapeButtonRef = useRef<HTMLDivElement>(null);
@@ -243,6 +246,48 @@ const LeftToolbar: React.FC<LeftToolbarProps> = ({
           </div>
         )}
       </div>
+
+      <div className="w-full h-px bg-gray-300 my-1"></div>
+
+      {/* 카드 리스트 카테고리 버튼 */}
+      <ToolbarButton
+        onClick={() => {
+          const newCategory = activeCardCategory === "scrap" ? null : "scrap";
+          setActiveCardCategory(newCategory);
+          onToggleCardListPanel?.(newCategory);
+        }}
+        active={activeCardCategory === "scrap"}
+        tooltip="스크랩"
+        description="저장된 스크랩 아이디어를 확인하고 캔버스에 추가합니다."
+      >
+        <Icon name="bookmark" className="w-5 h-5" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        onClick={() => {
+          const newCategory = activeCardCategory === "idea" ? null : "idea";
+          setActiveCardCategory(newCategory);
+          onToggleCardListPanel?.(newCategory);
+        }}
+        active={activeCardCategory === "idea"}
+        tooltip="아이디어"
+        description="저장된 아이디어를 확인하고 캔버스에 추가합니다."
+      >
+        <Icon name="lightbulb" className="w-5 h-5" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        onClick={() => {
+          const newCategory = activeCardCategory === "planning" ? null : "planning";
+          setActiveCardCategory(newCategory);
+          onToggleCardListPanel?.(newCategory);
+        }}
+        active={activeCardCategory === "planning"}
+        tooltip="기획/작성 중"
+        description="작업 중인 프로젝트를 확인하고 캔버스에 추가합니다."
+      >
+        <Icon name="fileEdit" className="w-5 h-5" />
+      </ToolbarButton>
 
       <div className="w-full h-px bg-gray-300 my-1"></div>
 

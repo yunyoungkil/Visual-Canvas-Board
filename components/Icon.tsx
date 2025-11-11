@@ -61,7 +61,9 @@ export type IconName =
   | "tableColumnBefore"
   | "tableColumnAfter"
   | "tableColumnDelete"
-  | "tableDelete";
+  | "tableDelete"
+  | "bookmark"
+  | "fileEdit";
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -533,6 +535,18 @@ const ICONS: Record<IconName, React.ReactNode> = {
       <path d="M15 3v18"></path>
       <line x1="6" y1="6" x2="18" y2="18" stroke="red" strokeWidth="2"></line>
       <line x1="18" y1="6" x2="6" y2="18" stroke="red" strokeWidth="2"></line>
+    </>
+  ),
+  bookmark: (
+    <>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+    </>
+  ),
+  fileEdit: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <path d="M12 18.5l-3 1.5V14l3-1.5L15 14v6z"></path>
     </>
   ),
 };
